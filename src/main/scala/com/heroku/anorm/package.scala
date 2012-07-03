@@ -10,6 +10,7 @@ import java.sql.{Array => SqlArray}
 
 package object anorm {
 
+  val herokuAnorm = "idea please dont optimize away my implicits"
 
   def enumToType[T](convert: String => Option[T])(implicit m: Manifest[T]): Column[T] = Column.nonNull {
     (value, meta) =>
