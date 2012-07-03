@@ -8,9 +8,11 @@ import ch.qos.logback.core.spi.{FilterAttachableImpl, FilterReply, ContextAwareB
 import java.util
 import ch.qos.logback.core.filter.Filter
 import reflect.BeanProperty
+import com.typesafe.config.ConfigFactory
 
 object ActorBasedConsoleAppender {
-  lazy val consoleActor = ActorSystem("logging").actorOf(Props[ConsoleActor])
+  lazy val conf = ConfigFactory.load("logging.conf")
+  lazy val consoleActor = ActorSystem("logging", conf).actorOf(Props[ConsoleActor])
 }
 
 class ConsoleActor extends Actor {

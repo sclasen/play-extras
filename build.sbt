@@ -9,7 +9,9 @@ libraryDependencies ++= Seq(
    "redis.clients" % "jedis" % "2.1.0",
     "org.slf4j"                         %    "slf4j-api"                %   "1.6.4",
     "ch.qos.logback"                    %    "logback-core"             %   "1.0.3",
-    "ch.qos.logback"                    %    "logback-classic"          %   "1.0.3"
+    "ch.qos.logback"                    %    "logback-classic"          %   "1.0.3",
+    "org.specs2"                        %%   "specs2"                   %   "1.9"      %  "test",
+    "play" %% "play-test" % "2.0.2" % "test"
 )
 
 
