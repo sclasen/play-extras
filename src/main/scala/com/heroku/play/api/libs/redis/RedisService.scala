@@ -6,10 +6,13 @@ import org.slf4j.LoggerFactory
 import redis.clients.jedis._
 import scala.Some
 import org.apache.commons.pool.impl.GenericObjectPool.Config
+import java.util.concurrent.atomic.AtomicInteger
 
 
 object RedisService {
   lazy val redisUrl = new URI(sys.env("REDISTOGO_URL"))
+
+  val subscribeThreadCounter = new AtomicInteger(0)
 
   def apply(): RedisService = new RedisService(redisUrl)
 
@@ -57,7 +60,7 @@ class RedisService(val redisUrl: URI) {
           exceptionHandler
         }
       }
-    }, "redis subscription thread")
+    }, "redis subscription thread:" + RedisService.subscribeThreadCounter.incrementAndGet())
     t.setDaemon(true)
     t.start()
 

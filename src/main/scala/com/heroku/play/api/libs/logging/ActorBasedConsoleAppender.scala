@@ -27,7 +27,7 @@ class ConsoleActor extends Actor {
 
 class ActorBasedConsoleAppender extends ContextAwareBase with Appender[ILoggingEvent] {
 
-  private var fai: FilterAttachableImpl[ILoggingEvent] = new FilterAttachableImpl[ILoggingEvent]
+  private val fai = new FilterAttachableImpl[ILoggingEvent]
 
   @BeanProperty
   var layout: Layout[ILoggingEvent] = _
