@@ -69,9 +69,6 @@ object CredentialsService {
     encryptor
   }
 
-  /**
-   * only use directly as a util
-   */
   def doEncryptCredential(credential: String, secretKey: String): String = {
     getCryptor(secretKey).encrypt(credential)
   }
@@ -80,7 +77,7 @@ object CredentialsService {
     doEncryptCredential(credential, unmaskKey(maskedSecretKeyEnvVar, maskPlayConfigName))
   }
 
-  private[security] def doDecryptCredential(encryptedCredential: String, key: String): String = {
+  def doDecryptCredential(encryptedCredential: String, key: String): String = {
     getCryptor(key).decrypt(encryptedCredential)
   }
 
