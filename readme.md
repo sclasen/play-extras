@@ -1,4 +1,4 @@
-# heroku-play-extras
+# play-extras
 
 This project contains useful functionality for developing Play 2.0 Scala apps, especially on Heroku
 
@@ -14,6 +14,8 @@ This project contains useful functionality for developing Play 2.0 Scala apps, e
 * Security trait for mixing into controllers that wish to force SSL on Heroku.
 * Utilities for extracting and generating BasicAuth and URLEncoded values
 * HerokuGlobal trait that does logging in the callback methods.
+* CredentialsService, utilities for bcrypt based password hashing, strong password based encryption.
+
 
 ## How to use
 
