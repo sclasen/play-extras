@@ -4,7 +4,7 @@ import org.mindrot.jbcrypt.BCrypt
 import sun.misc.{BASE64Decoder, BASE64Encoder}
 import play.api.Play.current
 import java.security.SecureRandom
-import org.jasypt.encryption.pbe.StandardPBEStringEncryptor
+import org.jasypt.encryption.pbe.PooledPBEStringEncryptor
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.util.concurrent.ConcurrentHashMap
 import org.jasypt.encryption.StringEncryptor
@@ -13,8 +13,8 @@ import org.jasypt.salt.RandomSaltGenerator
 
 object CredentialsService {
 
-
-  private val encryptors = new ConcurrentHashMap[String, StringEncryptor]()  //Ciphers are not threadsafe but jasypt StringEncryptors do proper synchronization
+  //Ciphers are not threadsafe but jasypt StringEncryptors do proper synchronization
+  private val encryptors = new ConcurrentHashMap[String, StringEncryptor]()
   private val hashCache = new ConcurrentHashMap[String, String]()
 
   def hashPassword(password: String): String = {
@@ -45,7 +45,8 @@ object CredentialsService {
   }
 
   def createCryptor(secretKey: String): StringEncryptor = {
-    val cryptor: StandardPBEStringEncryptor = new StandardPBEStringEncryptor()
+    val cryptor = new PooledPBEStringEncryptor()
+    cryptor.setPoolSize(Runtime.getRuntime.availableProcessors())
     cryptor.setProvider(new BouncyCastleProvider)
     cryptor.setAlgorithm("PBEWITHSHA256AND256BITAES-CBC-BC")
     cryptor.setPassword(secretKey)
@@ -71,24 +72,22 @@ object CredentialsService {
   /**
    * only use directly as a util
    */
-  def ___encryptCredential(credential: String, secretKey: String): String = {
+  def doEncryptCredential(credential: String, secretKey: String): String = {
     getCryptor(secretKey).encrypt(credential)
   }
 
   def encryptCredential(credential: String, maskedSecretKeyEnvVar: String, maskPlayConfigName: String): String = {
-    ___encryptCredential(credential, unmaskKey(maskedSecretKeyEnvVar, maskPlayConfigName))
+    doEncryptCredential(credential, unmaskKey(maskedSecretKeyEnvVar, maskPlayConfigName))
   }
 
-  /**
-   *
-   * @param encryptedCredential  the credential to decrypt
-   * @param maskedSecretKeyEnvVar the name of the env var containing the masked secret key
-   * @param maskPlayConfigName the key in the current play config that contains the secret key mask
-   * @return decrypted credential
-   */
-  def decryptCredential(encryptedCredential: String, maskedSecretKeyEnvVar: String, maskPlayConfigName: String): String = {
-    val key = unmaskKey(maskedSecretKeyEnvVar, maskPlayConfigName)
+  private[security] def doDecryptCredential(encryptedCredential: String, key: String): String = {
     getCryptor(key).decrypt(encryptedCredential)
+  }
+
+  def decryptCredential(encryptedCredentialEnvVar: String, maskedSecretKeyEnvVar: String, maskPlayConfigName: String): String = {
+    val key = unmaskKey(maskedSecretKeyEnvVar, maskPlayConfigName)
+    val encryptedCredential = sys.env.get(encryptedCredentialEnvVar).getOrElse(sys.error(encryptedCredentialEnvVar + " was not found in the environment"))
+    doDecryptCredential(encryptedCredential, key)
   }
 
   def maskKey(secretKey: String, mask: String): String = {
