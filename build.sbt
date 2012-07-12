@@ -1,5 +1,7 @@
 name := "play-extras"
 
+resolvers += "typesafe-releases" at "http://repo.typesafe.com/typesafe/releases"
+
 libraryDependencies ++= Seq(
    "play" %% "play" % "2.0.2",
    "play" %% "anorm" % "2.0.2",
