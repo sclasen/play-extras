@@ -9,6 +9,18 @@ import javax.sql.DataSource
 import java.sql.{Statement, SQLException, Connection}
 import scala.util.control.Exception._
 
+
+
+/*
+Note to use this plugin, you need to add a conf/play.plugins file to your app that looks like
+
+450:com.heroku.play.api.db.evolutions.EvolutionsPlugin
+
+You should also disable the default play evolutions plugin in your conf file
+
+evolutionplugin=disabled
+
+*/
 class EvolutionsPlugin(app: Application) extends PlayEvolutionsPlugin(app) {
 
   val log = LoggerFactory.getLogger(classOf[EvolutionsPlugin])
