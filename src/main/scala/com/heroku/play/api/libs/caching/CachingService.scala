@@ -12,11 +12,11 @@ import play.api.Play.current
 
 trait CachingService[C] {
 
-  def asyncCached[T](cache: String, key: String, expiration: Duration = 5 minutes, onHit: C => Unit = cOnHit(_))(block: => Promise[T])(implicit m: Manifest[T], context: C): Promise[T]
+  def asyncCached[T](cache: String, key: String, expiration: Duration = 5 minutes, onHit: C => Unit = defaultOnHit(_))(block: => Promise[T])(implicit m: Manifest[T], context: C): Promise[T]
 
-  def cached[T](cache: String, key: String, expiration: Duration = 5 minutes, onHit: C => Unit = cOnHit(_))(block: => T)(implicit m: Manifest[T], context: C): T
+  def cached[T](cache: String, key: String, expiration: Duration = 5 minutes, onHit: C => Unit = defaultOnHit(_))(block: => T)(implicit m: Manifest[T], context: C): T
 
-  def cOnHit(c: C){}
+  def defaultOnHit(c: C){}
 }
 
 object LaxJson extends Json {
