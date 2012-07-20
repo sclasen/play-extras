@@ -12,9 +12,11 @@ import play.api.Play.current
 
 trait CachingService[C] {
 
-  def asyncCached[T](cache: String, key: String, expiration: Duration = 5 minutes, onHit: C => Unit)(block: => Promise[T])(implicit m: Manifest[T], context: C): Promise[T]
+  def asyncCached[T](cache: String, key: String, expiration: Duration = 5 minutes, onHit: C => Unit = cOnHit(_))(block: => Promise[T])(implicit m: Manifest[T], context: C): Promise[T]
 
-  def cached[T](cache: String, key: String, expiration: Duration = 5 minutes, onHit: C => Unit)(block: => T)(implicit m: Manifest[T], context: C): T
+  def cached[T](cache: String, key: String, expiration: Duration = 5 minutes, onHit: C => Unit = cOnHit(_))(block: => T)(implicit m: Manifest[T], context: C): T
+
+  def cOnHit(c: C){}
 }
 
 object LaxJson extends Json {
@@ -25,12 +27,6 @@ object LaxJson extends Json {
 trait RedisCachingServiceNoContext extends RedisCachingService[Unit] {
 
   implicit val unitCtx = ()
-
-  override def asyncCached[T](cache: String, key: String, expiration: Duration, onHit: (Unit) => Unit = unitOnHit(_))(block: => Promise[T])(implicit m: Manifest[T], context: Unit): Promise[T] = super.asyncCached(cache, key, expiration, onHit)(block)(m, context)
-
-  override def cached[T](cache: String, key: String, expiration: Duration, onHit: (Unit) => Unit = unitOnHit(_))(block: => T)(implicit m: Manifest[T], context: Unit): T = super.cached(cache, key, expiration, onHit)(block)(m, context)
-
-  def unitOnHit(u: Unit) {}
 
 }
 
