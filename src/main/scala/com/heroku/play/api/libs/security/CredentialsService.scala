@@ -3,7 +3,7 @@ package com.heroku.play.api.libs.security
 import org.mindrot.jbcrypt.BCrypt
 import sun.misc.{BASE64Decoder, BASE64Encoder}
 import play.api.Play.current
-import java.security.SecureRandom
+import java.security.{MessageDigest, SecureRandom}
 import org.jasypt.encryption.pbe.PooledPBEStringEncryptor
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.util.concurrent.ConcurrentHashMap
@@ -38,7 +38,7 @@ object CredentialsService {
         true
       } else false
     } else {
-      if (isEqual(okPw.getBytes("UTF-8"), password.getBytes("UTF-8"))) {
+      if (MessageDigest.isEqual(okPw.getBytes("UTF-8"), password.getBytes("UTF-8"))) {
         true
       } else {
         //make invalid passwords pay the hit of calculating a bcrypt hash
@@ -48,22 +48,6 @@ object CredentialsService {
     }
   }
 
-  def isEqual(a: Array[Byte], b: Array[Byte]): Boolean = {
-    if (a.length != b.length) {
-      false
-    } else {
-      /*
-      a.zip(b).foldLeft(0) {
-        case (result, (ba, bb)) => result | ba ^ bb
-      } == 0
-      */
-      var result = 0
-      (0 until a.length).foreach {
-        i => result |= a(i) ^ b(i)
-      }
-      result == 0
-    }
-  }
 
   def createCryptor(secretKey: String): StringEncryptor = {
     val cryptor = new PooledPBEStringEncryptor()
