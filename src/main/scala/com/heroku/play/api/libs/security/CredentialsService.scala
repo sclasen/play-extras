@@ -25,6 +25,10 @@ object CredentialsService {
     BCrypt.checkpw(password, hashed)
   }
 
+  def clearCache() {
+    hashCache.clear()
+  }
+
   /*use only for performance sensitive situations, like api calls that cant pay the latency of a bcrypt hash every request*/
   def checkPasswordAgainstHashCached(password: String, hashed: String): Boolean = {
     val okPw = hashCache.get(hashed)
@@ -34,13 +38,30 @@ object CredentialsService {
         true
       } else false
     } else {
-      if (okPw == password) {
+      if (isEqual(okPw.getBytes("UTF-8"), password.getBytes("UTF-8"))) {
         true
       } else {
         //make invalid passwords pay the hit of calculating a bcrypt hash
         hashPassword(password)
         false
       }
+    }
+  }
+
+  def isEqual(a: Array[Byte], b: Array[Byte]): Boolean = {
+    if (a.length != b.length) {
+      false
+    } else {
+      /*
+      a.zip(b).foldLeft(0) {
+        case (result, (ba, bb)) => result | ba ^ bb
+      } == 0
+      */
+      var result = 0
+      (0 until a.length).foreach {
+        i => result |= a(i) ^ b(i)
+      }
+      result == 0
     }
   }
 
