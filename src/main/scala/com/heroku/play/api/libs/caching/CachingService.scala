@@ -12,11 +12,15 @@ import play.api.Play.current
 
 trait CachingService[C] {
 
+  def asyncUncache(cache: String, key: String)
+
   def asyncCached[T](cache: String, key: String, expiration: Duration = 5 minutes, onHit: C => Unit = defaultOnHit(_))(block: => Promise[T])(implicit m: Manifest[T], context: C): Promise[T]
+
+  def uncache(cache: String, key: String)
 
   def cached[T](cache: String, key: String, expiration: Duration = 5 minutes, onHit: C => Unit = defaultOnHit(_))(block: => T)(implicit m: Manifest[T], context: C): T
 
-  def defaultOnHit(c: C){}
+  def defaultOnHit(c: C) {}
 }
 
 object LaxJson extends Json {
@@ -53,6 +57,16 @@ trait RedisCachingService[C] extends CachingService[C] {
           }
       })
     }
+  }
+
+
+  def asyncUncache(cache: String, key: String) {
+    Akka.future {
+      redisService.withRedis {
+        redis => redis.del(cacheKey(cache, key))
+      }
+    }
+    ()
   }
 
   def asyncCached[T](cache: String, key: String, expiration: Duration = 5 minutes, onHit: C => Unit)(block: => Promise[T])(implicit m: Manifest[T], context: C): Promise[T] = {
@@ -116,6 +130,13 @@ trait RedisCachingService[C] extends CachingService[C] {
     }
   }
 
+
+  def uncache(cache: String, key: String) {
+    redisService.withRedis {
+      redis => redis.del(cacheKey(cache, key))
+    }
+    ()
+  }
 
   def cached[T](cache: String, key: String, expiration: Duration = 5 minutes, onHit: C => Unit)(block: => T)(implicit m: Manifest[T], context: C): T = {
     val redisKey = cacheKey(cache, key)
