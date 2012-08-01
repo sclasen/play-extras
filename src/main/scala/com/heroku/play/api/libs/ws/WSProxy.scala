@@ -28,23 +28,26 @@ object WSProxy {
         enum.close()
       }
 
-      def onBodyPartReceived(p1: HttpResponseBodyPart): STATE = {
-        enum.push(p1.getBodyPartBytes)
+      def onBodyPartReceived(part: HttpResponseBodyPart): STATE = {
+        enum.push(part.getBodyPartBytes)
+        if (part.isLast) {
+          enum.close()
+          STATE.ABORT
+        } else
+          STATE.CONTINUE
+      }
+
+      def onStatusReceived(s: HttpResponseStatus): STATE = {
+        status.redeem(s.getStatusCode)
         STATE.CONTINUE
       }
 
-      def onStatusReceived(p1: HttpResponseStatus): STATE = {
-        status.redeem(p1.getStatusCode)
-        STATE.CONTINUE
-      }
-
-      def onHeadersReceived(p1: HttpResponseHeaders): STATE = {
-        headers.redeem(p1)
+      def onHeadersReceived(h: HttpResponseHeaders): STATE = {
+        headers.redeem(h)
         STATE.CONTINUE
       }
 
       def onCompleted() {
-        enum.close()
       }
     })
 
