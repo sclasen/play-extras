@@ -13,11 +13,11 @@ import play.api.libs.ws.WS
 object WSProxy {
 
 
-  def proxyGetAsync(url: String) = proxyRequestAsync(WS.client.prepareGet(url).build())
+  def proxyGetAsync(url: String, responseHeadersToOverwrite: (String, String)*) = proxyRequestAsync(WS.client.prepareGet(url).build(), responseHeadersToOverwrite.toMap)
 
-  def proxyGetAsyncAuthenticated(url: String, authHeaderValue: String) = proxyRequestAsync(WS.client.prepareGet(url).addHeader("AUTHORIZATION", authHeaderValue).build())
+  def proxyGetAsyncAuthenticated(url: String, authHeaderValue: String, responseHeadersToOverwrite: (String, String)*) = proxyRequestAsync(WS.client.prepareGet(url).addHeader("AUTHORIZATION", authHeaderValue).build(), responseHeadersToOverwrite.toMap)
 
-  def proxyRequestAsync(req: Request): Promise[Result] = {
+  def proxyRequestAsync(req: Request, responseHeadersToOverwrite: Map[String, String] = Map.empty): Promise[Result] = {
     val enum = Enumerator.imperative[Array[Byte]]()
     val headers = Promise[HttpResponseHeaders]()
     val status = Promise[Int]()
@@ -55,7 +55,7 @@ object WSProxy {
         h =>
           val hmap = h.getHeaders.iterator().asScala.map {
             entry => entry.getKey -> entry.getValue.get(0)
-          }.toMap
+          }.toMap ++ responseHeadersToOverwrite
           SimpleResult(ResponseHeader(s, hmap), enum)
       }
     }
