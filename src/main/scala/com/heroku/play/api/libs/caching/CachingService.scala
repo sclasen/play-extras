@@ -83,7 +83,7 @@ trait RedisCachingService[C] extends CachingService[C] {
       }, _ match {
         case Some(t) => {
           log.debug("async cache hit for {}", redisKey)
-          onHit
+          onHit(context)
           promise.redeem(t)
         }
         case None => {
@@ -146,7 +146,7 @@ trait RedisCachingService[C] extends CachingService[C] {
           get(redis, redisKey) match {
             case Some(t) =>
               log.info("cache hit for {}", redisKey)
-              onHit
+              onHit(context)
               t
             case None =>
               log.info("cache miss for {}", redisKey)
