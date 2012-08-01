@@ -29,12 +29,8 @@ object WSProxy {
       }
 
       def onBodyPartReceived(part: HttpResponseBodyPart): STATE = {
-        enum.push(part.getBodyPartBytes)
-        if (part.isLast) {
-          enum.close()
-          STATE.ABORT
-        } else
-          STATE.CONTINUE
+        while (!enum.push(part.getBodyPartBytes)) {Thread.sleep(10)}
+        STATE.CONTINUE
       }
 
       def onStatusReceived(s: HttpResponseStatus): STATE = {
@@ -50,6 +46,8 @@ object WSProxy {
       def onCompleted() {
       }
     })
+
+
 
     import collection.JavaConverters._
 
