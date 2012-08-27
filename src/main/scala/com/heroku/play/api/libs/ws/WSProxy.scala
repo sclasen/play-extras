@@ -4,9 +4,7 @@ import play.api.libs.iteratee.Enumerator
 import play.api.libs.concurrent.Promise
 import com.ning.http.client._
 import com.ning.http.client.AsyncHandler.STATE
-import play.api.mvc.Result
-import play.api.mvc.ResponseHeader
-import play.api.mvc.SimpleResult
+import play.api.mvc.{Results, Result, ResponseHeader, SimpleResult}
 import play.api.libs.ws.WS
 
 
@@ -29,7 +27,9 @@ object WSProxy {
       }
 
       def onBodyPartReceived(part: HttpResponseBodyPart): STATE = {
-        while (!enum.push(part.getBodyPartBytes)) {Thread.sleep(10)}
+        while (!enum.push(part.getBodyPartBytes)) {
+          Thread.sleep(10)
+        }
         STATE.CONTINUE
       }
 
@@ -40,13 +40,16 @@ object WSProxy {
 
       def onHeadersReceived(h: HttpResponseHeaders): STATE = {
         headers.redeem(h)
-        STATE.CONTINUE
+        if (h.getHeaders.containsKey("Content-Length") && h.getHeaders.get("Content-Length").get(0) != "0") {
+          STATE.ABORT
+        } else {
+          STATE.CONTINUE
+        }
       }
 
       def onCompleted() {
       }
     })
-
 
 
     import collection.JavaConverters._
@@ -57,7 +60,11 @@ object WSProxy {
           val hmap = h.getHeaders.iterator().asScala.map {
             entry => entry.getKey -> entry.getValue.get(0)
           }.toMap ++ responseHeadersToOverwrite
-          SimpleResult(ResponseHeader(s, hmap), enum)
+          if (h.getHeaders.containsKey("Content-Length") && h.getHeaders.get("Content-Length").get(0) != "0") {
+            SimpleResult(ResponseHeader(s, hmap), enum)
+          } else {
+            SimpleResult(ResponseHeader(s, hmap), Enumerator(Results.EmptyContent()))
+          }
       }
     }
 
