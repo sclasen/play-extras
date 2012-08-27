@@ -41,9 +41,9 @@ object WSProxy {
       def onHeadersReceived(h: HttpResponseHeaders): STATE = {
         headers.redeem(h)
         if (h.getHeaders.containsKey("Content-Length") && h.getHeaders.get("Content-Length").get(0) != "0") {
-          STATE.ABORT
-        } else {
           STATE.CONTINUE
+        } else {
+          STATE.ABORT
         }
       }
 
