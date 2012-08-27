@@ -15,8 +15,7 @@ import scala.Some
 
 
 trait JsonAPI extends Controller {
-  val cacheableJsonHeaders = CONTENT_TYPE -> JSON
-  val jsonHeaders = Seq(CONTENT_TYPE -> JSON, CACHE_CONTROL -> "no-cache")
+  val jsonHeaders = Seq(CONTENT_TYPE -> JSON)
 
   def json(status: Status, content: ToJson): SimpleResult[String] = json(status, content.json)
 

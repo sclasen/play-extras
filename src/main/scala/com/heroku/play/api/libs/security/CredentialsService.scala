@@ -106,14 +106,14 @@ object CredentialsService {
   }
 
 
-  private def xor(key: String, xorStr: String): String = {
+  def xor(key: String, xorStr: String): String = {
     val bytes = key.zipWithIndex.map {
       case (c, idx) => (c.toByte ^ xorStr.charAt(idx).toByte).asInstanceOf[Byte]
     }.toArray
     new BASE64Encoder().encode(bytes)
   }
 
-  private def unxor(xored: String, xorString: String): String = {
+  def unxor(xored: String, xorString: String): String = {
     val decoded: Array[Byte] = new BASE64Decoder().decodeBuffer(xored)
     val unx = decoded.zipWithIndex.map {
       case (b, idx) => (b ^ xorString.charAt(idx).toByte).asInstanceOf[Byte]
