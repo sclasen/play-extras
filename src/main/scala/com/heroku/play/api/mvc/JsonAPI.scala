@@ -1,6 +1,6 @@
 package com.heroku.play.api.mvc
 
-import collection.Map
+
 import play.api.mvc.Controller
 import com.codahale.jerkson.Json
 import play.api.libs.json._
@@ -61,7 +61,7 @@ trait JsonAPI extends Controller {
           case (key, JsNull) => key -> null
           case (key, _) => key -> "invalid value"
         }
-        map.success
+        map.toMap.success
     }.getOrElse(("unable to convert " + field + "to map").failNel)
   }
 }
