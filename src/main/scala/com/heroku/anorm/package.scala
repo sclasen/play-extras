@@ -29,6 +29,13 @@ package object anorm {
     }
   }
 
+  /*convert a Seq[String,Any] to a 2 dimensional array, for conversion to hstore*/
+  implicit val mapAnyToStatement = new ToStatement[Map[String, Any]] {
+    def set(s: java.sql.PreparedStatement, index: Int, aValue: Map[String, Any]): Unit = {
+      tuple2SeqToStatement.set(s, index, aValue.toList)
+    }
+  }
+
   /*used when using select hstore_to_matrix(hstore_col) from table with hstore*/
   implicit def rowToMap: Column[Map[String, String]] = Column.nonNull {
     (value, meta) =>
