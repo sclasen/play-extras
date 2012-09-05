@@ -42,7 +42,7 @@ class CredentialsServiceSpec extends Specification {
         ("encrypt and decrypt credentials " + i) in {
           val credential = CredentialsService.generateKey()
           val secretKey = CredentialsService.generateKey()
-          val encrypted = CredentialsService.___encryptCredential(credential, secretKey)
+          val encrypted = CredentialsService.doEncryptCredential(credential, secretKey)
           CredentialsService.createCryptor(secretKey).decrypt(encrypted) mustEqual (credential)
         }
     }
@@ -53,7 +53,7 @@ class CredentialsServiceSpec extends Specification {
       i =>
         ("encrypt and decrypt credentials cached " + i) in {
           val credential = CredentialsService.generateKey()
-          val encrypted = CredentialsService.___encryptCredential(credential, key)
+          val encrypted = CredentialsService.doEncryptCredential(credential, key)
           CredentialsService.getCryptor(key).decrypt(encrypted) mustEqual (credential)
         }
     }
