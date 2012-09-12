@@ -9,6 +9,7 @@ import play.api.http.ContentTypes._
 import MailgunService._
 import com.codahale.jerkson.{Json => Jerkson}
 import org.slf4j.LoggerFactory
+import java.net.URLEncoder
 
 object MailgunService {
 
@@ -34,7 +35,7 @@ class MailgunService(apiKey: String, val mailgunDomain: String) {
 
   def createMailingList(address: String, domain: Option[String] = None, name: Option[String] = None, description: Option[String] = None): Promise[MailgunResponse[ListResponse]] = {
     val email = domain.map(d => address + "@" + d).getOrElse(address + "@" + mailgunDomain)
-    var fields = Map("address" -> Seq(email))
+    var fields = Map("address" -> email)
     post("/lists", fields).map(parseResp[ListResponse]).flatMap {
       case ErrorResponse(400, msg) if msg.endsWith("already exists") => getMailingList(address, domain)
       case x@_ => PurePromise(x)
@@ -61,7 +62,7 @@ class MailgunService(apiKey: String, val mailgunDomain: String) {
 
   def addMemberToList(member: String, list: String, listDomain: Option[String] = None): Promise[MailgunResponse[MemberResponse]] = {
     val listMail = listDomain.map(d => list + "@" + d).getOrElse(list + "@" + mailgunDomain)
-    var fields = Map("address" -> Seq(member), "upsert" -> Seq("yes"))
+    var fields = Map("address" -> member, "upsert" -> "yes")
     post("/lists/" + listMail + "/members", fields).map(parseResp[MemberResponse])
   }
 
@@ -76,7 +77,11 @@ class MailgunService(apiKey: String, val mailgunDomain: String) {
     prepare("/lists/" + listMail + "/members/" + member).delete().map(parseResp[MemberResponse])
   }
 
-  private def post(path: String, fields: Map[String, Seq[String]]): Promise[Response] = prepare(path).withHeaders(CONTENT_TYPE -> FORM).post(fields)
+  private def post(path: String, fields: Map[String, String]): Promise[Response] = prepare(path).withHeaders(CONTENT_TYPE -> FORM).post(encode(fields))
+
+  private def encode(fields: Map[String, String]) = fields.map {
+    case (k, v) => k + "=" + URLEncoder.encode(v, "UTF-8")
+  }.reduceLeft(_ + "&" + _)
 
   private def prepare(path: String) = {
     WS.url(mailgunBaseUrl + path).withHeaders(AUTHORIZATION -> mailgunBasicAuth, ACCEPT -> "application/json")

@@ -12,7 +12,7 @@ class MailgunServiceSpec extends Specification {
   val list = "test" + System.currentTimeMillis()
 
   val listEmail = list + "@" + config("mailgun.api.domain")
-  val userEmail = "user" + listEmail
+  val userEmail = "user+" + listEmail
 
   "MailgunService" should {
     sequential
