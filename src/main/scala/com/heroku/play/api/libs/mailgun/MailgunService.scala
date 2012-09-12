@@ -41,8 +41,8 @@ class MailgunService(apiKey: String, val mailgunDomain: String) {
     }
   }
 
-  def getMailingLists(): Promise[MailgunResponse[GetMailingLists]] = {
-    prepare("/lists").get().map(parseResp[GetMailingLists])
+  def getMailingLists(): Promise[MailgunResponse[MailingListList]] = {
+    prepare("/lists").get().map(parseResp[MailingListList])
   }
 
   def getMailingList(address: String, domain: Option[String] = None): Promise[MailgunResponse[ListResponse]] = {
@@ -64,6 +64,12 @@ class MailgunService(apiKey: String, val mailgunDomain: String) {
     var fields = Map("address" -> Seq(member), "upsert" -> Seq("yes"))
     post("/lists/" + listMail + "/members", fields).map(parseResp[MemberResponse])
   }
+
+  def listMembers(list: String, listDomain: Option[String] = None): Promise[MailgunResponse[MemberList]] = {
+    val listMail = listDomain.map(d => list + "@" + d).getOrElse(list + "@" + mailgunDomain)
+    prepare("/lists/" + listMail + "/members").get().map(parseResp[MemberList])
+  }
+
 
   def removeMemberFromList(member: String, list: String, listDomain: Option[String] = None): Promise[MailgunResponse[MemberResponse]] = {
     val listMail = listDomain.map(d => list + "@" + d).getOrElse(list + "@" + mailgunDomain)
@@ -115,4 +121,6 @@ case class MemberResponse(message: Option[String], member: Member)
 
 case class Member(address: String)
 
-case class GetMailingLists(items: List[MailingList])
+case class MemberList(items: List[Member])
+
+case class MailingListList(items: List[MailingList])

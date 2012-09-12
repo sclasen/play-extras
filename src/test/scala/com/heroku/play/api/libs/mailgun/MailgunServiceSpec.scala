@@ -67,6 +67,17 @@ class MailgunServiceSpec extends Specification {
       }
     }
 
+    "list the members of a list" in {
+      running(FakeApplication(additionalConfiguration = config)) {
+        val svc = MailgunService()
+        val resp = svc.listMembers(list).await(5, TimeUnit.SECONDS).get
+        resp match {
+          case OkResponse(MemberList(members)) => members(0).address mustEqual (userEmail)
+          case ErrorResponse(_, msg) => failure(msg)
+        }
+      }
+    }
+
 
     "remove a member from a list " in {
       running(FakeApplication(additionalConfiguration = config)) {
