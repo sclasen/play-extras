@@ -2,15 +2,17 @@ package com.heroku.play.api.libs.mailgun
 
 import play.api.Play._
 import com.heroku.play.api.libs.mvc
-import play.api.libs.concurrent.Promise
+import play.api.libs.concurrent.{PurePromise, Promise}
 import play.api.libs.ws.{Response, WS}
 import play.api.http.HeaderNames._
 import play.api.http.ContentTypes._
 import MailgunService._
 import com.codahale.jerkson.{Json => Jerkson}
+import org.slf4j.LoggerFactory
 
 object MailgunService {
 
+  val log = LoggerFactory.getLogger("MailgunService")
   val mailgunBaseUrl = "https://api.mailgun.net/v2"
 
   def apply(): MailgunService = {
@@ -33,7 +35,10 @@ class MailgunService(apiKey: String, val mailgunDomain: String) {
   def createMailingList(address: String, domain: Option[String] = None, name: Option[String] = None, description: Option[String] = None): Promise[MailgunResponse[ListResponse]] = {
     val email = domain.map(d => address + "@" + d).getOrElse(address + "@" + mailgunDomain)
     var fields = Map("address" -> Seq(email))
-    post("/lists", fields).map(parseResp[ListResponse])
+    post("/lists", fields).map(parseResp[ListResponse]).flatMap {
+      case ErrorResponse(400, msg) if msg.endsWith("already exists") => getMailingList(address, domain)
+      case x@_ => PurePromise(x)
+    }
   }
 
   def getMailingLists(): Promise[MailgunResponse[GetMailingLists]] = {
@@ -90,7 +95,7 @@ class MailgunService(apiKey: String, val mailgunDomain: String) {
   private def ok[T: Manifest](resp: Response) = parse[T](resp, OkResponse(_))
 
   private def err(resp: Response) = {
-    val atts = Jerkson.parse[Map[String,String]](resp.body)
+    val atts = Jerkson.parse[Map[String, String]](resp.body)
     ErrorResponse(resp.status, atts.get("message").getOrElse("no message"))
   }
 

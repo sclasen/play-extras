@@ -27,10 +27,8 @@ class MailgunServiceSpec extends Specification {
         }
         resp = svc.createMailingList(list, None, Some(list), Some(list)).await(5, TimeUnit.SECONDS).get
         resp match {
-          case OkResponse((ListResponse(_, MailingList(_, _, _, _, email, _)))) => failure("mailing list should already exist")
-          case ErrorResponse(status, msg) =>
-            println(msg)
-            msg.endsWith("already exists") mustEqual true
+          case OkResponse((ListResponse(_, MailingList(_, _, _, _, email, _)))) => email mustEqual (listEmail)
+          case ErrorResponse(_, msg) => failure(msg)
         }
       }
     }
