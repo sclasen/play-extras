@@ -20,5 +20,7 @@ libraryDependencies ++= Seq(
     "play" %% "play-test" % "2.0.2" % "test"
 )
 
+testOptions in Test += Tests.Argument("junitxml")
+
 
 
