@@ -20,10 +20,17 @@ class MailgunServiceSpec extends Specification {
     "create a mailing list " in {
       running(FakeApplication(additionalConfiguration = config)) {
         val svc = MailgunService()
-        val resp = svc.createMailingList(list, None, Some(list), Some(list)).await(5, TimeUnit.SECONDS).get
+        var resp = svc.createMailingList(list, None, Some(list), Some(list)).await(5, TimeUnit.SECONDS).get
         resp match {
           case OkResponse((ListResponse(_, MailingList(_, _, _, _, email, _)))) => email mustEqual (listEmail)
-          case ErrorResponse(MailgunError(_, msg)) => failure(msg)
+          case ErrorResponse(_, msg) => failure(msg)
+        }
+        resp = svc.createMailingList(list, None, Some(list), Some(list)).await(5, TimeUnit.SECONDS).get
+        resp match {
+          case OkResponse((ListResponse(_, MailingList(_, _, _, _, email, _)))) => failure("mailing list should already exist")
+          case ErrorResponse(status, msg) =>
+            println(msg)
+            msg.endsWith("already exists") mustEqual true
         }
       }
     }
@@ -35,7 +42,7 @@ class MailgunServiceSpec extends Specification {
         val resp = svc.getMailingLists().await(5, TimeUnit.SECONDS).get
         resp match {
           case OkResponse(lists) => lists.items.find(_.address == listEmail).isDefined mustEqual true
-          case ErrorResponse(MailgunError(_, msg)) => failure(msg)
+          case ErrorResponse(_, msg) => failure(msg)
         }
       }
     }
@@ -46,7 +53,7 @@ class MailgunServiceSpec extends Specification {
         val resp = svc.getMailingList(list).await(5, TimeUnit.SECONDS).get
         resp match {
           case OkResponse((ListResponse(_, MailingList(_, _, _, _, email, _)))) => email mustEqual (listEmail)
-          case ErrorResponse(MailgunError(_, msg)) => failure(msg)
+          case ErrorResponse(_, msg) => failure(msg)
         }
       }
     }
@@ -57,7 +64,7 @@ class MailgunServiceSpec extends Specification {
         val resp = svc.addMemberToList(userEmail, list).await(5, TimeUnit.SECONDS).get
         resp match {
           case OkResponse(MemberResponse(_, Member(email))) => email mustEqual (userEmail)
-          case ErrorResponse(MailgunError(_, msg)) => failure(msg)
+          case ErrorResponse(_, msg) => failure(msg)
         }
       }
     }
@@ -69,7 +76,7 @@ class MailgunServiceSpec extends Specification {
         val resp = svc.removeMemberFromList(userEmail, list).await(5, TimeUnit.SECONDS).get
         resp match {
           case OkResponse(MemberResponse(_, Member(email))) => email mustEqual (userEmail)
-          case ErrorResponse(MailgunError(_, msg)) => failure(msg)
+          case ErrorResponse(_, msg) => failure(msg)
         }
       }
     }
@@ -83,7 +90,7 @@ class MailgunServiceSpec extends Specification {
         val resp = svc.deleteMailingList(listEmail).await(5, TimeUnit.SECONDS).get
         resp match {
           case OkResponse(_) => true mustEqual (true)
-          case ErrorResponse(MailgunError(_, msg)) => failure(msg)
+          case ErrorResponse(_, msg) => failure(msg)
         }
       }
     }

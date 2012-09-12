@@ -83,24 +83,24 @@ class MailgunService(apiKey: String, val mailgunDomain: String) {
     try {
       fn(Jerkson.parse[T](resp.body))
     } catch {
-      case e: Exception => ErrorResponse(MailgunError(999, "Unable to parse response:" + resp))
+      case e: Exception => ErrorResponse(resp.status, "Unable to parse response:" + resp.body)
     }
   }
 
   private def ok[T: Manifest](resp: Response) = parse[T](resp, OkResponse(_))
 
-  private def err(resp: Response) = parse[Nothing](resp, ErrorResponse(_))
-
+  private def err(resp: Response) = {
+    val atts = Jerkson.parse[Map[String,String]](resp.body)
+    ErrorResponse(resp.status, atts.get("message").getOrElse("no message"))
+  }
 
 }
 
 sealed trait MailgunResponse[+T]
 
-case class OkResponse[T](t: T) extends MailgunResponse[T]
+case class OkResponse[T](ok: T) extends MailgunResponse[T]
 
-case class ErrorResponse(error: MailgunError) extends MailgunResponse[Nothing]
-
-case class MailgunError(status: Int, message: String)
+case class ErrorResponse(status: Int, message: String) extends MailgunResponse[Nothing]
 
 case class MailingList(members_count: Int, description: String, created_at: String, access_level: String, address: String, name: String)
 
