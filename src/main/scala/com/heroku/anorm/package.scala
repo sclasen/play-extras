@@ -58,13 +58,8 @@ package object anorm {
     val MetaDataItem(qualified, nullable, clazz) = meta
     value match {
       case a: Array =>
-        val rs = a.getResultSet
-        eitherToError(Right(
-          new Iterator[String] {
-            def hasNext = !rs.isLast
-            def next() = if (rs.next) rs.getString(2) else ""
-          }.toList
-        ))
+        import scala.collection.JavaConversions._
+        eitherToError(Right(a.getArray.asInstanceOf[scala.Array[String]].toList))
       case _ => eitherToError(Left(TypeDoesNotMatch(meta.column + " is not an Array")))
     }
   }
