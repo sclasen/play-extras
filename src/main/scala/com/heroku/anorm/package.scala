@@ -52,4 +52,21 @@ package object anorm {
       }
   }
 
+  implicit def arrayToList: Column[List[String]] = Column.nonNull { (value, meta) =>
+    import java.sql.Array
+
+    val MetaDataItem(qualified, nullable, clazz) = meta
+    value match {
+      case a: Array =>
+        val rs = a.getResultSet
+        eitherToError(Right(
+          new Iterator[String] {
+            def hasNext = !rs.isLast
+            def next() = if (rs.next) rs.getString(2) else ""
+          }.toList
+        ))
+      case _ => eitherToError(Left(TypeDoesNotMatch(meta.column + " is not an Array")))
+    }
+  }
+
 }
