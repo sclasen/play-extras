@@ -35,8 +35,7 @@ class MailgunService(apiKey: String, val mailgunDomain: String) {
 
   def createMailingList(address: String, domain: Option[String] = None, name: Option[String] = None, description: Option[String] = None): Promise[MailgunResponse[ListResponse]] = {
     val email = domain.map(d => address + "@" + d).getOrElse(address + "@" + mailgunDomain)
-    var fields = Map("address" -> email)
-    post("/lists", fields).map(parseResp[ListResponse]).flatMap {
+    post("/lists", "address" -> email).map(parseResp[ListResponse]).flatMap {
       case ErrorResponse(400, msg) if msg.endsWith("already exists") => getMailingList(address, domain)
       case x@_ => PurePromise(x)
     }
@@ -62,8 +61,7 @@ class MailgunService(apiKey: String, val mailgunDomain: String) {
 
   def addMemberToList(member: String, list: String, listDomain: Option[String] = None): Promise[MailgunResponse[MemberResponse]] = {
     val listMail = listDomain.map(d => list + "@" + d).getOrElse(list + "@" + mailgunDomain)
-    var fields = Map("address" -> member, "upsert" -> "yes")
-    post("/lists/" + listMail + "/members", fields).map(parseResp[MemberResponse])
+    post("/lists/" + listMail + "/members", "address" -> member, "upsert" -> "yes").map(parseResp[MemberResponse])
   }
 
   def listMembers(list: String, listDomain: Option[String] = None): Promise[MailgunResponse[MemberList]] = {
@@ -77,9 +75,37 @@ class MailgunService(apiKey: String, val mailgunDomain: String) {
     prepare("/lists/" + listMail + "/members/" + member).delete().map(parseResp[MemberResponse])
   }
 
-  private def post(path: String, fields: Map[String, String]): Promise[Response] = prepare(path).withHeaders(CONTENT_TYPE -> FORM).post(encode(fields))
+  def getRoutes(limit: Int = 100, skip: Int = 0): Promise[MailgunResponse[RoutesList]] = {
+    prepare("/routes").withQueryString("limit" -> limit.toString, "skip" -> skip.toString).get().map(parseResp[RoutesList])
+  }
 
-  private def encode(fields: Map[String, String]) = fields.map {
+  def getRoute(id: String): Promise[MailgunResponse[RouteResponse]] = {
+    prepare("/routes/" + id).get().map(parseResp[RouteResponse])
+  }
+
+  def updateRoute(route: Route): Promise[MailgunResponse[RouteUpdated]] = {
+    put("/routes/" + route.id, routesParams(route): _*).map(parseResp[RouteUpdated])
+  }
+
+  def createRoute(route: CreateRoute): Promise[MailgunResponse[RouteResponse]] = {
+    post("/routes", routesParams(route): _*).map(parseResp[RouteResponse])
+  }
+
+  def deleteRoute(id: String): Promise[MailgunResponse[RouteDeleted]] = {
+    prepare("/routes/" + id).delete().map(parseResp[RouteDeleted])
+  }
+
+  private def routesParams(route: Route) = Seq("priority" -> route.priority.toString, "description" -> route.description, "expression" -> route.expression) ++
+    route.actions.map(a => "action" -> a)
+
+  private def routesParams(route: CreateRoute) = Seq("priority" -> route.priority.toString, "description" -> route.description, "expression" -> route.expression) ++
+    route.actions.map(a => "action" -> a)
+
+  private def post(path: String, fields: (String, String)*): Promise[Response] = prepare(path).withHeaders(CONTENT_TYPE -> FORM).post(encode(fields))
+
+  private def put(path: String, fields: (String, String)*): Promise[Response] = prepare(path).withHeaders(CONTENT_TYPE -> FORM).put(encode(fields))
+
+  private def encode(fields: Seq[(String, String)]) = fields.map {
     case (k, v) => k + "=" + URLEncoder.encode(v, "UTF-8")
   }.reduceLeft(_ + "&" + _)
 
@@ -124,8 +150,21 @@ case class ListResponse(message: Option[String], list: MailingList)
 
 case class MemberResponse(message: Option[String], member: Member)
 
+case class RouteResponse(message: Option[String], route: Route)
+
+case class CreateRoute(expression: String, actions: List[String], priority: Int = 0, description: String = "")
+
+case class Route(expression: String, actions: List[String], priority: Int = 0, description: String = "", id: String, created_at: String)
+
 case class Member(address: String)
 
 case class MemberList(items: List[Member])
 
 case class MailingListList(items: List[MailingList])
+
+case class RoutesList(total_count: Int, items: List[Route])
+
+case class RouteDeleted(id:String,message:String)
+
+case class RouteUpdated(expression: String, actions: List[String], priority: Int = 0, description: String = "", id: String, created_at: String, message:String)
+
