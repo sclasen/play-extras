@@ -52,14 +52,14 @@ package object anorm {
       }
   }
 
-  implicit def arrayToList: Column[List[String]] = Column.nonNull { (value, meta) =>
+  implicit def arrayToList[T:Manifest]: Column[List[T]] = Column.nonNull { (value, meta) =>
     import java.sql.Array
 
     val MetaDataItem(qualified, nullable, clazz) = meta
     value match {
       case a: Array =>
         import scala.collection.JavaConversions._
-        eitherToError(Right(a.getArray.asInstanceOf[scala.Array[String]].toList))
+        eitherToError(Right(a.getArray.asInstanceOf[scala.Array[T]].toList))
       case _ => eitherToError(Left(TypeDoesNotMatch(meta.column + " is not an Array")))
     }
   }
