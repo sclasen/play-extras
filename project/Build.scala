@@ -30,8 +30,8 @@ object Build extends Build {
     pomExtra := (
       <licenses>
         <license>
-          <name>BSD-style</name>
-          <url>http://www.opensource.org/licenses/bsd-license.php</url>
+          <name>The Apache Software License, Version 2.0</name>
+          <url>http://www.apache.org/licenses/LICENSE-2.0.html</url>
           <distribution>repo</distribution>
         </license>
       </licenses>
