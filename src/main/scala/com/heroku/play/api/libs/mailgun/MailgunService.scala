@@ -41,8 +41,21 @@ class MailgunService(apiKey: String, val mailgunDomain: String) {
     }
   }
 
-  def getMailingLists(): Promise[MailgunResponse[MailingListList]] = {
-    prepare("/lists").get().map(parseResp[MailingListList])
+  def getMailingLists(limit: Int = 100, skip: Int = 0): Promise[MailgunResponse[MailingListList]] = {
+    prepare("/lists").withQueryString("limit" -> limit.toString, "skip" -> skip.toString).get().map(parseResp[MailingListList])
+  }
+
+
+  private def getMailingLists(list: MailingListList, skip: Int): Promise[MailgunResponse[MailingListList]] = {
+    getMailingLists(100, skip).flatMap {
+      case o@OkResponse(m@MailingListList(items)) if items.size < 100 => PurePromise(OkResponse(list + m))
+      case OkResponse(m@MailingListList(_)) => getMailingLists(list + m, skip + 100)
+      case e: ErrorResponse => PurePromise(e)
+    }
+  }
+
+  def getAllMailingLists(): Promise[MailgunResponse[MailingListList]] = {
+    getMailingLists(MailingListList(List.empty), 0)
   }
 
   def getMailingList(address: String, domain: Option[String] = None): Promise[MailgunResponse[ListResponse]] = {
@@ -79,6 +92,18 @@ class MailgunService(apiKey: String, val mailgunDomain: String) {
     prepare("/routes").withQueryString("limit" -> limit.toString, "skip" -> skip.toString).get().map(parseResp[RoutesList])
   }
 
+  private def getRoutes(list: RoutesList, skip: Int): Promise[MailgunResponse[RoutesList]] = {
+    getRoutes(100, skip).flatMap {
+      case o@OkResponse(r@RoutesList(count, items)) if items.size < 100 => PurePromise(OkResponse(list + r))
+      case OkResponse(r@RoutesList(_, _)) => getRoutes(list + r, skip + 100)
+      case e: ErrorResponse => PurePromise(e)
+    }
+  }
+
+  def getAllRoutes(): Promise[MailgunResponse[RoutesList]] = {
+    getRoutes(RoutesList(0, List.empty), 0)
+  }
+
   def getRoute(id: String): Promise[MailgunResponse[RouteResponse]] = {
     prepare("/routes/" + id).get().map(parseResp[RouteResponse])
   }
@@ -101,10 +126,23 @@ class MailgunService(apiKey: String, val mailgunDomain: String) {
     post("/" + mboxDomain + "/mailboxes", "mailbox" -> mailbox, "password" -> password).map(parseResp[MessageResponse])
   }
 
-  def getMailboxes(domain: Option[String] = None): Promise[MailgunResponse[MailboxList]] = {
+  def getMailboxes(limit: Int = 100, skip: Int = 0, domain: Option[String] = None): Promise[MailgunResponse[MailboxList]] = {
     val mboxDomain = domain.getOrElse(mailgunDomain)
-    prepare("/" + mboxDomain + "/mailboxes").get().map(parseResp[MailboxList])
+    prepare("/" + mboxDomain + "/mailboxes").withQueryString("limit" -> limit.toString, "skip" -> skip.toString).get().map(parseResp[MailboxList])
   }
+
+  private def getMailboxes(list: MailboxList, skip: Int, domain: Option[String]): Promise[MailgunResponse[MailboxList]] = {
+    getMailboxes(100, skip, domain).flatMap {
+      case o@OkResponse(m@MailboxList(count, items)) if items.size < 100 => PurePromise(OkResponse(list + m))
+      case OkResponse(m@MailboxList(_, _)) => getMailboxes(list + m, skip + 100, domain)
+      case e: ErrorResponse => PurePromise(e)
+    }
+  }
+
+  def getAllMailboxes(domain: Option[String] = None): Promise[MailgunResponse[MailboxList]] = {
+    getMailboxes(MailboxList(0, List.empty), 0, domain)
+  }
+
 
   def updateMailboxPassword(name: String, password: String, domain: Option[String] = None): Promise[MailgunResponse[MessageResponse]] = {
     val mboxDomain = domain.getOrElse(mailgunDomain)
@@ -190,9 +228,13 @@ case class Member(address: String)
 
 case class MemberList(items: List[Member])
 
-case class MailingListList(items: List[MailingList])
+case class MailingListList(items: List[MailingList]) {
+  def +(other: MailingListList) = this.copy(items = this.items ++ other.items)
+}
 
-case class RoutesList(total_count: Int, items: List[Route])
+case class RoutesList(total_count: Int, items: List[Route]) {
+  def +(other: RoutesList): RoutesList = this.copy(total_count = this.total_count + other.total_count, items = this.items ++ other.items)
+}
 
 case class RouteDeleted(id: String, message: String)
 
@@ -200,7 +242,9 @@ case class RouteUpdated(expression: String, actions: List[String], priority: Int
 
 case class Mailbox(mailbox: String, size_bytes: Option[Int], created_at: String)
 
-case class MailboxList(total_count: Int, items: List[Mailbox])
+case class MailboxList(total_count: Int, items: List[Mailbox]) {
+  def +(other: MailboxList): MailboxList = this.copy(total_count = this.total_count + other.total_count, items = this.items ++ other.items)
+}
 
 case class MessageResponse(message: String)
 

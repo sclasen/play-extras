@@ -5,6 +5,7 @@ import java.util.concurrent.TimeUnit
 import play.api.test.Helpers._
 import play.api.test.FakeApplication
 import org.specs2.matcher.MatchResult
+import play.api.libs.concurrent.Promise
 
 
 class MailgunServiceSpec extends Specification {
@@ -44,9 +45,16 @@ class MailgunServiceSpec extends Specification {
     "get all lists" in {
       withMailgun {
         svc =>
-          val resp = svc.getMailingLists().await(5, TimeUnit.SECONDS).get
+          Promise.sequence {
+            (0 to 100).map {
+              i => svc.createMailingList("alltest" + i)
+            }
+          }.await(30, TimeUnit.SECONDS)
+          val resp = svc.getAllMailingLists().await(5, TimeUnit.SECONDS).get
           resp match {
-            case OkResponse(lists) => lists.items.find(_.address == listEmail).isDefined mustEqual true
+            case OkResponse(lists) =>
+              lists.items.find(_.address == listEmail).isDefined mustEqual true
+              lists.items.size > 100 mustEqual(true)
             case ErrorResponse(_, msg) => failure(msg)
           }
       }
@@ -123,7 +131,7 @@ class MailgunServiceSpec extends Specification {
 
     "list routes" in withMailgun {
       svc =>
-        svc.getRoutes().await(5, TimeUnit.SECONDS).get match {
+        svc.getAllRoutes().await(5, TimeUnit.SECONDS).get match {
           case OkResponse(rlist) => rlist.items.find(_.id == route.id).isDefined mustEqual true
           case ErrorResponse(_, msg) => failure(msg)
         }
@@ -165,8 +173,8 @@ class MailgunServiceSpec extends Specification {
 
     "list  mailboxes" in withMailgun {
       svc =>
-        svc.getMailboxes().await(5, TimeUnit.SECONDS).get match {
-          case OkResponse(MailboxList(count,mlist)) =>  mlist.find(_.mailbox == mailboxAddresss).isDefined mustEqual true
+        svc.getAllMailboxes().await(5, TimeUnit.SECONDS).get match {
+          case OkResponse(MailboxList(count, mlist)) => mlist.find(_.mailbox == mailboxAddresss).isDefined mustEqual true
           case ErrorResponse(_, msg) => failure(msg)
         }
     }
@@ -183,11 +191,10 @@ class MailgunServiceSpec extends Specification {
     "delete a  mailbox" in withMailgun {
       svc =>
         svc.deleteMailbox(mailbox).await(5, TimeUnit.SECONDS).get match {
-          case OkResponse(MailboxDeleted(msg,spec)) => msg != null mustEqual (true)
+          case OkResponse(MailboxDeleted(msg, spec)) => msg != null mustEqual (true)
           case ErrorResponse(_, msg) => failure(msg)
         }
     }
-
 
 
   }
