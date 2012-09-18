@@ -95,6 +95,36 @@ class MailgunService(apiKey: String, val mailgunDomain: String) {
     prepare("/routes/" + id).delete().map(parseResp[RouteDeleted])
   }
 
+  def createMailbox(name: String, password: String, domain: Option[String] = None): Promise[MailgunResponse[MessageResponse]] = {
+    val mboxDomain = domain.getOrElse(mailgunDomain)
+    val mailbox = name + "@" + mboxDomain
+    post("/" + mboxDomain + "/mailboxes", "mailbox" -> mailbox, "password" -> password).map(parseResp[MessageResponse])
+  }
+
+  def getMailboxes(domain: Option[String] = None): Promise[MailgunResponse[MailboxList]] = {
+    val mboxDomain = domain.getOrElse(mailgunDomain)
+    prepare("/" + mboxDomain + "/mailboxes").get().map(parseResp[MailboxList])
+  }
+
+  def updateMailboxPassword(name: String, password: String, domain: Option[String] = None): Promise[MailgunResponse[MessageResponse]] = {
+    val mboxDomain = domain.getOrElse(mailgunDomain)
+    val mailbox = name + "@" + mboxDomain
+    put("/" + mboxDomain + "/mailboxes/" + mailbox, "password" -> password).map {
+      resp =>
+        parseResp[MessageResponse](resp)
+    }
+  }
+
+  def deleteMailbox(name: String, domain: Option[String] = None): Promise[MailgunResponse[MailboxDeleted]] = {
+    val mboxDomain = domain.getOrElse(mailgunDomain)
+    val mailbox = name + "@" + mboxDomain
+    prepare("/" + mboxDomain + "/mailboxes/" + mailbox).delete().map {
+      resp =>
+        parseResp[MailboxDeleted](resp)
+    }
+  }
+
+
   private def routesParams(route: Route) = Seq("priority" -> route.priority.toString, "description" -> route.description, "expression" -> route.expression) ++
     route.actions.map(a => "action" -> a)
 
@@ -164,7 +194,17 @@ case class MailingListList(items: List[MailingList])
 
 case class RoutesList(total_count: Int, items: List[Route])
 
-case class RouteDeleted(id:String,message:String)
+case class RouteDeleted(id: String, message: String)
 
-case class RouteUpdated(expression: String, actions: List[String], priority: Int = 0, description: String = "", id: String, created_at: String, message:String)
+case class RouteUpdated(expression: String, actions: List[String], priority: Int = 0, description: String = "", id: String, created_at: String, message: String)
+
+case class Mailbox(mailbox: String, size_bytes: Option[Int], created_at: String)
+
+case class MailboxList(total_count: Int, items: List[Mailbox])
+
+case class MessageResponse(message: String)
+
+case class MailboxDeleted(message: String, spec: String)
+
+
 

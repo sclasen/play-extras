@@ -16,6 +16,9 @@ class MailgunServiceSpec extends Specification {
   val listEmail = list + "@" + config("mailgun.api.domain")
   val userEmail = "user+" + listEmail
 
+  val mailbox = "mailbox"
+  val mailboxAddresss = mailbox + "@" + config("mailgun.api.domain")
+
   var route: Route = _
 
   "MailgunService" should {
@@ -151,6 +154,40 @@ class MailgunServiceSpec extends Specification {
           case ErrorResponse(_, msg) => failure(msg)
         }
     }
+
+    "create a mailbox" in withMailgun {
+      svc =>
+        svc.createMailbox(mailbox, "asdfghjl").await(5, TimeUnit.SECONDS).get match {
+          case OkResponse(MessageResponse(msg)) => msg != null mustEqual (true)
+          case ErrorResponse(_, msg) => failure(msg)
+        }
+    }
+
+    "list  mailboxes" in withMailgun {
+      svc =>
+        svc.getMailboxes().await(5, TimeUnit.SECONDS).get match {
+          case OkResponse(MailboxList(count,mlist)) =>  mlist.find(_.mailbox == mailboxAddresss).isDefined mustEqual true
+          case ErrorResponse(_, msg) => failure(msg)
+        }
+    }
+
+    "update  mailbox password" in withMailgun {
+      svc =>
+        svc.updateMailboxPassword(mailbox, "qwert").await(5, TimeUnit.SECONDS).get match {
+          case OkResponse(MessageResponse(msg)) => msg != null mustEqual (true)
+          case ErrorResponse(_, msg) => failure(msg)
+        }
+
+
+    }
+    "delete a  mailbox" in withMailgun {
+      svc =>
+        svc.deleteMailbox(mailbox).await(5, TimeUnit.SECONDS).get match {
+          case OkResponse(MailboxDeleted(msg,spec)) => msg != null mustEqual (true)
+          case ErrorResponse(_, msg) => failure(msg)
+        }
+    }
+
 
 
   }
