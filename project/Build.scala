@@ -28,6 +28,8 @@ object Build extends Build {
     pomIncludeRepository := { x => false },
     // Maven central wants some extra metadata to keep things 'clean'.
     pomExtra := (
+
+      <url>http://github.com/sclasen/play-extras</url>
       <licenses>
         <license>
           <name>The Apache Software License, Version 2.0</name>
