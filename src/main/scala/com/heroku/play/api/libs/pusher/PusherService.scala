@@ -11,8 +11,10 @@ import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 import org.slf4j.LoggerFactory
 import play.api.Play._
+import play.api.http.HeaderNames._
 import play.api.libs.ws.{Response, WS}
 import play.api.libs.concurrent.Promise
+import com.heroku.play.api.mvc.ToJson
 
 
 //play2/scala translation of https://github.com/regisbamba/Play-Pusher
@@ -81,11 +83,12 @@ class PusherService(val config: PusherConfig) {
   private final val host: String = "api.pusherapp.com"
 
   def trigger(channel: String, event: String, message: String, socketId: String = null): Promise[Response] = {
-    val path: String = "/apps/" + config.id + "/channels/" + channel + "/events"
-    val query: String = "auth_key=" + config.key + "&auth_timestamp=" + (System.currentTimeMillis / 1000) + "&auth_version=1.0" + "&body_md5=" + PusherUtil.md5(message) + "&name=" + event + (if (socketId != null) "&socket_id=" + socketId else "")
+    val path: String = "/apps/" + config.id + "/events"
+    val pusherMessage = PusherMessage(event, message, channel).json
+    val query: String = "auth_key=" + config.key + "&auth_timestamp=" + (System.currentTimeMillis / 1000) + "&auth_version=1.0" + "&body_md5=" + PusherUtil.md5(pusherMessage)
     val signature: String = PusherUtil.sha256("POST\n" + path + "\n" + query, config.secret)
     val uri: String = "http://" + host + path + "?" + query + "&auth_signature=" + signature
-    WS.url(uri).post(message)
+    WS.url(uri).withHeaders(CONTENT_TYPE -> "application/json").post(pusherMessage)
   }
 
   def createAuthString(socketId: String, channel: String): String = {
@@ -110,5 +113,11 @@ class PusherService(val config: PusherConfig) {
   }
 
 
+}
+
+case class PusherMessage(name: String, data: String, channel: Option[String], channels: Option[Array[String]], socket_id: Option[String]) extends ToJson
+
+object PusherMessage {
+  def apply(name: String, data: String, channel: String): PusherMessage = PusherMessage(name, data, Some(channel), None, None)
 }
 

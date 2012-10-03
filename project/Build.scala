@@ -7,7 +7,7 @@ object Build extends Build {
   val playextras = (Project("play-extras", file(".")) settings(
     organization := "com.sclasen",
     name := "play-extras",
-    version := "0.1.1-SNAPSHOT",
+    version := "0.1.2-SNAPSHOT",
     scalaVersion := "2.9.1",
     crossScalaVersions := Seq("2.9.1"),
     libraryDependencies ++= dependencies
