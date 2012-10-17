@@ -3,12 +3,11 @@ package com.heroku.play.api.db.evolutions
 import org.slf4j.LoggerFactory
 import play.api.db.DBPlugin
 import play.api.{Mode, Logger, Application}
-import play.api.db.evolutions.{Evolutions, InvalidDatabaseRevision, EvolutionsPlugin => PlayEvolutionsPlugin}
+import play.api.db.evolutions.{EvolutionsPlugin => PlayEvolutionsPlugin, ScriptAccessor, Evolutions, InvalidDatabaseRevision}
 import play.api.db.evolutions.Evolutions._
 import javax.sql.DataSource
 import java.sql.{Statement, SQLException, Connection}
 import scala.util.control.Exception._
-
 
 
 /*
@@ -31,6 +30,8 @@ class EvolutionsPlugin(app: Application) extends PlayEvolutionsPlugin(app) {
 
   val sleepInterval = app.configuration.getInt("evolutions.lock.sleep.interval").map(_.toLong).getOrElse(1000L)
 
+  val upsOnly = app.configuration.getString("evolutions.ups.only").filter(_ == "enabled").isDefined
+
   override def onStart() {
     val api = app.plugin[DBPlugin].map(_.api).getOrElse(throw new Exception("there should be a database plugin registered at this point but looks like it's not available, so evolution won't work. Please make sure you register a db plugin properly"))
     api.datasources.foreach {
@@ -41,7 +42,10 @@ class EvolutionsPlugin(app: Application) extends PlayEvolutionsPlugin(app) {
             app.mode match {
               case Mode.Test => Evolutions.applyScript(api, db, script)
               case Mode.Dev if app.configuration.getBoolean("applyEvolutions." + db).filter(_ == true).isDefined => Evolutions.applyScript(api, db, script)
-              case Mode.Prod if app.configuration.getBoolean("applyEvolutions." + db).filter(_ == true).isDefined => Evolutions.applyScript(api, db, script)
+              case Mode.Prod if app.configuration.getBoolean("applyEvolutions." + db).filter(_ == true).isDefined =>
+                if (upsOnly && ScriptAccessor.hasDowns(script)) {
+                  throw new Exception("evolutions.ups.only=enabled and the evolution script contains downs, aborting!")
+                } else Evolutions.applyScript(api, db, script)
               case Mode.Prod => {
                 Logger("play").warn("Your production database [" + db + "] needs evolutions! \n\n" + toHumanReadableScript(script))
                 Logger("play").warn("Run with -DapplyEvolutions." + db + "=true if you want to run them automatically (be careful)")
@@ -56,6 +60,7 @@ class EvolutionsPlugin(app: Application) extends PlayEvolutionsPlugin(app) {
       case (ds, db) => Logger("play").warn("Evolutions are Globally Enabled, but selectively disabled for:" + db)
     }
   }
+
 
   def withLock(ds: DataSource)(block: => Unit) {
     if (app.configuration.getBoolean("evolutions.use.locks").filter(_ == true).isDefined) {
