@@ -199,7 +199,7 @@ class MailgunServiceSpec extends Specification {
 
   }
 
-  def withMailgun(block: MailgunService => MatchResult[Any]): MatchResult[Any] = running(FakeApplication(additionalConfiguration = config, withoutPlugins = Seq("play.api.cache.EhCachePlugin"))) {
+  def withMailgun(block: MailgunService => MatchResult[Any]): MatchResult[Any] = running(FakeApplication(additionalConfiguration = config)) {
     val svc = MailgunService()
     block(svc)
   }
