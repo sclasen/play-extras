@@ -11,8 +11,8 @@ import play.api.Play.current
 
 
 object RedisService {
-  lazy val redisUrl = current.configuration.getString(configName).
-    getOrElse(sys.env.get("REDISTOGO_URL").map(uri => new URI(uri)).getOrElse(sys.error("unable to load redis url from %s config or %s env".format(configName, "REDISTOGO_URL"))))
+  lazy val redisUrl = current.configuration.getString(configName).map(uri => new URI(uri))
+    .getOrElse(sys.env.get("REDISTOGO_URL").map(uri => new URI(uri)).getOrElse(sys.error("unable to load redis url from %s config or %s env".format(configName, "REDISTOGO_URL"))))
   /*
   use a config like this
 
