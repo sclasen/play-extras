@@ -23,7 +23,7 @@ class PusherServiceSpec extends Specification{
   }
 
 
-  def withPusher(block: PusherService => MatchResult[Any]): MatchResult[Any] = running(FakeApplication(additionalConfiguration = config)) {
+  def withPusher(block: PusherService => MatchResult[Any]): MatchResult[Any] = running(FakeApplication(additionalConfiguration = config, withoutPlugins = Seq("play.api.cache.EhCachePlugin"))) {
     val svc = PusherService()
     block(svc)
   }
