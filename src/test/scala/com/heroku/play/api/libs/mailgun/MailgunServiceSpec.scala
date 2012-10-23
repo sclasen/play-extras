@@ -54,7 +54,7 @@ class MailgunServiceSpec extends Specification {
           resp match {
             case OkResponse(lists) =>
               lists.items.find(_.address == listEmail).isDefined mustEqual true
-              lists.items.size > 100 mustEqual(true)
+              lists.items.size > 100 mustEqual (true)
             case ErrorResponse(_, msg) => failure(msg)
           }
       }
@@ -199,7 +199,7 @@ class MailgunServiceSpec extends Specification {
 
   }
 
-  def withMailgun(block: MailgunService => MatchResult[Any]): MatchResult[Any] = running(FakeApplication(additionalConfiguration = config)) {
+  def withMailgun(block: MailgunService => MatchResult[Any]): MatchResult[Any] = running(FakeApplication(additionalConfiguration = config, withoutPlugins = Seq("play.api.cache.EhCachePlugin"))) {
     val svc = MailgunService()
     block(svc)
   }
