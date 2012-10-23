@@ -153,6 +153,11 @@ trait RedisCachingService[C] extends CachingService[C] {
               calculateAndSave(redis, redisKey, expiration, block)
           }
       }
+    } catch {
+      case e: Exception => {
+        log.error("exception in cached() going to source directly", e)
+        block
+      }
     }
   }
 

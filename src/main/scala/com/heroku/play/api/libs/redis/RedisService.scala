@@ -7,10 +7,21 @@ import redis.clients.jedis._
 import scala.Some
 import org.apache.commons.pool.impl.GenericObjectPool.Config
 import java.util.concurrent.atomic.AtomicInteger
+import play.api.Play.current
 
 
 object RedisService {
-  lazy val redisUrl = new URI(sys.env("REDISTOGO_URL"))
+  lazy val redisUrl = current.configuration.getString(configName).
+    getOrElse(sys.env.get("REDISTOGO_URL").map(uri => new URI(uri)).getOrElse(sys.error("unable to load redis url from %s config or %s env".format(configName, "REDISTOGO_URL"))))
+  /*
+  use a config like this
+
+  redis.service.url=${?REDISTOGO_URL}
+  redis.service.url=${?REDISGREEN_URL}
+  ...etc...
+  then you can change addon providers in an outage by adding a new provider and dropping the down one.
+   */
+  val configName = "redis.service.url"
 
   val subscribeThreadCounter = new AtomicInteger(0)
 
