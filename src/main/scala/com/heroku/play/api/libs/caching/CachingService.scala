@@ -26,6 +26,8 @@ trait CachingService[C] {
 object LaxJson extends Json {
   //We use this object to deserialize objects from heroku.jar which internally uses the same settings
   mapper.configure(DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+
+  def getMapper = mapper
 }
 
 trait RedisCachingServiceNoContext extends RedisCachingService[Unit] {
