@@ -7,10 +7,11 @@ object Build extends Build {
   val playextras = (Project("play-extras", file(".")) settings(
     organization := "com.sclasen",
     name := "play-extras",
-    version := "0.1.4-SNAPSHOT",
+    version := "0.1.5-SNAPSHOT",
     scalaVersion := "2.9.1",
     crossScalaVersions := Seq("2.9.1"),
-    libraryDependencies ++= dependencies
+    libraryDependencies ++= dependencies,
+    resolvers ++= Seq("TypesafeMaven" at "http://repo.typesafe.com/typesafe/maven-releases", "whydoineedthis" at "http://repo.typesafe.com/typesafe/releases")
     ) settings(publishSettings:_*) settings(testSettings:_*) )
 
   def publishSettings: Seq[Setting[_]] = Seq(

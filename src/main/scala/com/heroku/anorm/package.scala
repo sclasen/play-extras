@@ -24,10 +24,12 @@ package object anorm {
   /*convert a Seq[String,Any] to a 2 dimensional array, for conversion to hstore*/
   implicit val tuple2SeqToStatement = new ToStatement[Seq[(String, Any)]] {
     def set(s: java.sql.PreparedStatement, index: Int, aValue: Seq[(String, Any)]): Unit = {
-      val toArray = aValue.map(tuple => Array(tuple._1, tuple._2.toString)).toArray
+      val toArray = aValue.map(tuple => Array(tuple._1, toStringOrNull(tuple._2))).toArray
       s.setArray(index, s.getConnection.createArrayOf("varchar", toArray.asInstanceOf[Array[Object]]))
     }
   }
+
+  def toStringOrNull(any: Any): String = if (any == null) null else any.toString
 
   /*convert a Seq[String,Any] to a 2 dimensional array, for conversion to hstore*/
   implicit val mapAnyToStatement = new ToStatement[Map[String, Any]] {
@@ -52,16 +54,17 @@ package object anorm {
       }
   }
 
-  implicit def arrayToList[T:Manifest]: Column[List[T]] = Column.nonNull { (value, meta) =>
-    import java.sql.Array
+  implicit def arrayToList[T: Manifest]: Column[List[T]] = Column.nonNull {
+    (value, meta) =>
+      import java.sql.Array
 
-    val MetaDataItem(qualified, nullable, clazz) = meta
-    value match {
-      case a: Array =>
-        import scala.collection.JavaConversions._
-        eitherToError(Right(a.getArray.asInstanceOf[scala.Array[T]].toList))
-      case _ => eitherToError(Left(TypeDoesNotMatch(meta.column + " is not an Array")))
-    }
+      val MetaDataItem(qualified, nullable, clazz) = meta
+      value match {
+        case a: Array =>
+          import scala.collection.JavaConversions._
+          eitherToError(Right(a.getArray.asInstanceOf[scala.Array[T]].toList))
+        case _ => eitherToError(Left(TypeDoesNotMatch(meta.column + " is not an Array")))
+      }
   }
 
 }
