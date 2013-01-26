@@ -112,6 +112,18 @@ class PusherService(val config: PusherConfig) {
     } else false
   }
 
+  def getActiveChannels(): Promise[Set[String]] = {
+    val path: String = "/apps/" + config.id + "/channels"
+    val query: String = "auth_key=" + config.key + "&auth_timestamp=" + (System.currentTimeMillis / 1000) + "&auth_version=1.0"
+    val signature: String = PusherUtil.sha256("GET\n" + path + "\n" + query, config.secret)
+    val uri: String = "http://" + host + path + "?" + query + "&auth_signature=" + signature
+    WS.url(uri).get().map {
+      resp =>
+        if (resp.status != 200) log.error(resp.body)
+        Json.parse[Map[String, Map[String, Any]]](resp.body).apply("channels").keySet
+    }
+  }
+
 
 }
 
