@@ -59,15 +59,15 @@ trait JsonAPI extends Controller {
 
 trait ToJson {
 
-  def json: String
+  def json: JsValue
 
 }
 
 case class Error(error_message: String) extends ToJson {
-  def json: String = Json.stringify(Json.obj("error_message" -> error_message))
+  def json = Json.obj("error_message" -> error_message)
 }
 
 case class Info(message: String) extends ToJson {
-  def json: String = Json.stringify(Json.obj("message" -> message))
+  def json = Json.obj("message" -> message)
 }
 

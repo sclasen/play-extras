@@ -7,6 +7,7 @@ import play.api.http.ContentTypes._
 import play.api.http.HeaderNames._
 import play.api.mvc.Results._
 import play.api.mvc.{ Handler, Request, Result, RequestHeader }
+import play.api.libs.json.Json._
 
 trait HerokuGlobal extends GlobalSettings {
   val log = LoggerFactory.getLogger("Global")
@@ -14,7 +15,7 @@ trait HerokuGlobal extends GlobalSettings {
   override def onError(request: RequestHeader, ex: Throwable) = {
     log.error("onError", ex)
     log.error("onError {}  {}", request, request.headers.toSimpleMap)
-    InternalServerError(Error("an unexpected error occurred").json).withHeaders(CONTENT_TYPE -> JSON)
+    InternalServerError(stringify(Error("an unexpected error occurred").json)).withHeaders(CONTENT_TYPE -> JSON)
   }
 
   override def onBadRequest(request: RequestHeader, error: String): Result = {
@@ -23,12 +24,12 @@ trait HerokuGlobal extends GlobalSettings {
     if (request.isInstanceOf[Request[_]]) {
       log.error("onBadRequest body {}", request.asInstanceOf[Request[_]].body)
     }
-    BadRequest(Error("Invalid Request Format").json).withHeaders(CONTENT_TYPE -> JSON)
+    BadRequest(stringify(Error("Invalid Request Format").json)).withHeaders(CONTENT_TYPE -> JSON)
   }
 
   override def onHandlerNotFound(request: RequestHeader): Result = {
     log.error("onHandlerNotFound {}  {}", request, request.headers.toSimpleMap)
-    NotFound(Error("Not Found").json).withHeaders(CONTENT_TYPE -> JSON)
+    NotFound(stringify(Error("Not Found").json)).withHeaders(CONTENT_TYPE -> JSON)
   }
 
   override def onRouteRequest(request: RequestHeader): Option[Handler] = {
