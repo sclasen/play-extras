@@ -19,14 +19,14 @@ trait JsonAPI extends Controller {
     status(content).withHeaders(jsonHeaders: _*)
   }
 
-  def require[T](js: JsValue, field: String)(implicit fjs: Reads[T]): ValidationNEL[String, T] = {
-    (js \ field).asOpt[T].map(t => t.success).getOrElse((field + " was not found").failNel)
+  def require[T](js: JsValue, field: String)(implicit fjs: Reads[T]): JsResult[T] = {
+    (js \ field).validate[T]
   }
 
-  def require[T, S](js: JsValue, field: String, convert: T => Option[S])(implicit fjs: Reads[T]): ValidationNEL[String, S] = {
+  def require[T, S](js: JsValue, field: String, convert: T => Option[S])(implicit fjs: Reads[T]): JsResult[S] = {
     require[T](js, field).map(v => convert(v)).flatMap {
-      case Some(s) => s.success
-      case None => ("Unable to convert field " + field + " to valid value").failNel
+      case Some(s) => JsSuccess(s)
+      case None => JsError("Unable to convert field " + field + " to valid value")
     }
   }
 
@@ -34,18 +34,18 @@ trait JsonAPI extends Controller {
     (js \ field).asOpt[T].success
   }
 
-  def str(js: JsValue, field: String)(implicit fjs: Reads[String]): ValidationNEL[String, String] = {
+  def str(js: JsValue, field: String)(implicit fjs: Reads[String]): JsResult[String] = {
     require[String](js, field)
   }
 
-  def long(js: JsValue, field: String)(implicit fjs: Reads[Long]): ValidationNEL[String, Long] = {
+  def long(js: JsValue, field: String)(implicit fjs: Reads[Long]): JsResult[Long] = {
     require[Long](js, field)
   }
 
-  def err(es: NonEmptyList[String]): Error = Error(es.list.reduce(_ + ", " + _))
+  def err(es: Seq[String]): Error = Error(es.reduce(_ + ", " + _))
 
-  def map(js: JsValue, field: String)(implicit fjs: Reads[JsObject]): ValidationNEL[String, Map[String, Any]] = {
-    (js \ field).asOpt[JsObject].map {
+  def map(js: JsValue, field: String)(implicit fjs: Reads[JsObject]): JsResult[Map[String, Any]] = {
+    (js \ field).validate[JsObject].flatMap {
       ob =>
         val map = ob.value.map {
           case (key, num: JsNumber) => key -> num.value
@@ -54,8 +54,8 @@ trait JsonAPI extends Controller {
           case (key, JsNull) => key -> null
           case (key, _) => key -> "invalid value"
         }
-        map.toMap.success
-    }.getOrElse(("unable to convert " + field + "to map").failNel)
+        JsSuccess(map.toMap)
+    }
   }
 }
 
