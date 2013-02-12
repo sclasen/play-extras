@@ -5,6 +5,7 @@ import scalaz._
 import Scalaz._
 import play.api.libs.json._
 import play.api.mvc.SimpleResult
+import play.api.data.validation.ValidationError
 
 trait JsonAPI extends Controller {
   val jsonHeaders = Seq(CONTENT_TYPE -> JSON)
@@ -42,7 +43,17 @@ trait JsonAPI extends Controller {
     require[Long](js, field)
   }
 
-  def err(es: Seq[String]): Error = Error(es.reduce(_ + ", " + _))
+  def err(es: Seq[(JsPath, Seq[ValidationError])]): Error = {
+    Error {
+      es.foldLeft(new StringBuilder) {
+        case (res, (path, errors)) =>
+          res.append(path.toString()).append(" had errors ")
+          errors.foldLeft(res) {
+            case (r, e) => r.append(e.message)
+          }
+      }.toString()
+    }
+  }
 
   def map(js: JsValue, field: String)(implicit fjs: Reads[JsObject]): JsResult[Map[String, Any]] = {
     (js \ field).validate[JsObject].flatMap {
