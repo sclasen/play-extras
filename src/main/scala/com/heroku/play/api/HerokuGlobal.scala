@@ -6,8 +6,7 @@ import play.api.GlobalSettings
 import play.api.http.ContentTypes._
 import play.api.http.HeaderNames._
 import play.api.mvc.Results._
-import play.api.mvc.{Handler, Request, Result, RequestHeader}
-
+import play.api.mvc.{ Handler, Request, Result, RequestHeader }
 
 trait HerokuGlobal extends GlobalSettings {
   val log = LoggerFactory.getLogger("Global")

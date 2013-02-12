@@ -1,25 +1,17 @@
 package com.heroku.play.api.mvc
 
-
 import play.api.mvc.Controller
-import com.codahale.jerkson.Json
-import play.api.libs.json._
 import scalaz._
 import Scalaz._
-import play.api.libs.json.JsBoolean
+import play.api.libs.json._
 import play.api.mvc.SimpleResult
-import play.api.libs.json.JsString
-import play.api.libs.json.JsObject
-import play.api.libs.json.JsNumber
-import scala.Some
-
 
 trait JsonAPI extends Controller {
   val jsonHeaders = Seq(CONTENT_TYPE -> JSON)
 
-  def json(status: Status, content: ToJson): SimpleResult[String] = json(status, content.json)
+  def json[T](status: Status, content: T)(implicit f: Format[T]): SimpleResult[String] = json(status, Json.stringify(Json.toJson(content)))
 
-  def json(status: Status, content: List[_]): SimpleResult[String] = json(status, Json.generate(content))
+  def json[T](status: Status, content: List[T])(implicit f: Format[T]): SimpleResult[String] = json(status, Json.stringify(Json.toJson(content)))
 
   def json(status: Status, content: String): SimpleResult[String] = {
     status(content).withHeaders(jsonHeaders: _*)
@@ -48,7 +40,6 @@ trait JsonAPI extends Controller {
     require[Long](js, field)
   }
 
-
   def err(es: NonEmptyList[String]): Error = Error(es.list.reduce(_ + ", " + _))
 
   def map(js: JsValue, field: String)(implicit fjs: Reads[JsObject]): ValidationNEL[String, Map[String, Any]] = {
@@ -67,13 +58,16 @@ trait JsonAPI extends Controller {
 }
 
 trait ToJson {
-  def json: String = Json.generate(this)
+
+  def json: String
+
 }
 
-case class Error(error_message: String) extends ToJson
+case class Error(error_message: String) extends ToJson {
+  def json: String = Json.stringify(Json.obj("error_message" -> error_message))
+}
 
-case class Info(message: String) extends ToJson
-
-
-
+case class Info(message: String) extends ToJson {
+  def json: String = Json.stringify(Json.obj("message" -> message))
+}
 

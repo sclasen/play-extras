@@ -1,10 +1,8 @@
 package com.heroku.play.api.mvc
 
-
 import play.api.Play.current
 import play.api.mvc.Results._
 import play.api.mvc._
-
 
 trait Security {
   /*require SSL and redirect to https if not ssl*/

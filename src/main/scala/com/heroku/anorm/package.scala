@@ -6,7 +6,7 @@ import _root_.anorm.MetaDataItem
 import org.postgresql.util.PGobject
 import scala.Right
 import scala.Left
-import java.sql.{Array => SqlArray}
+import java.sql.{ Array => SqlArray }
 
 package object anorm {
 

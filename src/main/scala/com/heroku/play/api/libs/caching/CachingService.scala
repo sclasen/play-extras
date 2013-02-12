@@ -1,20 +1,19 @@
 package com.heroku.play.api.libs.caching
 
-import play.api.libs.concurrent.{Akka, Redeemable, Promise}
-import akka.util.Duration
+import scala.concurrent.duration._
 import com.heroku.play.api.libs.redis.RedisService
 import org.slf4j.LoggerFactory
-import org.codehaus.jackson.map.DeserializationConfig
-import com.codahale.jerkson.Json
 import redis.clients.jedis.Jedis
-import akka.util.duration._
-import play.api.Play.current
+import concurrent.{ Future, Promise, future, promise }
+import util.{ Failure, Success }
+import play.api.libs.json._
+import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
 trait CachingService[C] {
 
   def asyncUncache(cache: String, key: String)
 
-  def asyncCached[T](cache: String, key: String, expiration: Duration = 5 minutes, onHit: C => Unit = defaultOnHit(_))(block: => Promise[T])(implicit m: Manifest[T], context: C): Promise[T]
+  def asyncCached[T](cache: String, key: String, expiration: Duration = 5 minutes, onHit: C => Unit = defaultOnHit(_))(block: => Future[T])(implicit m: Manifest[T], context: C): Future[T]
 
   def uncache(cache: String, key: String)
 
@@ -23,19 +22,11 @@ trait CachingService[C] {
   def defaultOnHit(c: C) {}
 }
 
-object LaxJson extends Json {
-  //We use this object to deserialize objects from heroku.jar which internally uses the same settings
-  mapper.configure(DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-
-  def getMapper = mapper
-}
-
 trait RedisCachingServiceNoContext extends RedisCachingService[Unit] {
 
   implicit val unitCtx = ()
 
 }
-
 
 trait RedisCachingService[C] extends CachingService[C] {
   private val log = LoggerFactory.getLogger(classOf[CachingService[_]])
@@ -46,24 +37,22 @@ trait RedisCachingService[C] extends CachingService[C] {
 
   def cacheKey(cache: String, key: String): String = (cacheName + "-" + cache + "-key-" + key)
 
-  def fromSource[T](redisKey: String, expiration: Duration, promise: Redeemable[T], block: => Promise[T])(implicit m: Manifest[T]) = {
+  def fromSource[T](redisKey: String, expiration: Duration, promise: Promise[T], block: => Future[T])(implicit m: Manifest[T], f: Format[T]) = {
     val blockPromise = block
-    blockPromise.extend {
-      bp => bp.value.fold(be => promise.throwing(be), {
-        bs =>
-          promise.redeem(bs)
-          redisService.withRedis {
-            redis =>
-              calculateAndSave(redis, redisKey, expiration, bs)
-              ()
-          }
-      })
+    blockPromise.onComplete {
+      case Success(t) =>
+        promise.success(t)
+        redisService.withRedis {
+          redis =>
+            calculateAndSave(redis, redisKey, expiration, t)
+            ()
+        }
+      case Failure(e) => promise.failure(e)
     }
   }
 
-
   def asyncUncache(cache: String, key: String) {
-    Akka.future {
+    future {
       redisService.withRedis {
         redis => redis.del(cacheKey(cache, key))
       }
@@ -71,38 +60,36 @@ trait RedisCachingService[C] extends CachingService[C] {
     ()
   }
 
-  def asyncCached[T](cache: String, key: String, expiration: Duration = 5 minutes, onHit: C => Unit)(block: => Promise[T])(implicit m: Manifest[T], context: C): Promise[T] = {
+  def asyncCached[T](cache: String, key: String, expiration: Duration = 5 minutes, onHit: C => Unit)(block: => Future[T])(implicit m: Manifest[T], context: C, f: Format[T]): Future[T] = {
     val redisKey = cacheKey(cache, key)
-    val promise = Promise[T]()
-    Akka.future {
+    val pr = promise[T]
+    future {
       redisService.withRedis {
         redis => get[T](redis, redisKey)
       }
-    }.extend {
-      p => p.value.fold(e => {
+    }.onComplete {
+      case Success(Some(t)) => {
+        log.debug("async cache hit for {}", redisKey)
+        onHit(context)
+        pr.success(t)
+      }
+      case Success(None) => {
+        log.debug("async cache miss for {}", redisKey)
+        fromSource(redisKey, expiration, pr, block)
+      }
+      case Failure(e) => {
         log.error("exception reading from cache, going to source", e)
-        fromSource(redisKey, expiration, promise, block)
-      }, _ match {
-        case Some(t) => {
-          log.debug("async cache hit for {}", redisKey)
-          onHit(context)
-          promise.redeem(t)
-        }
-        case None => {
-          log.debug("async cache miss for {}", redisKey)
-
-          fromSource(redisKey, expiration, promise, block)
-        }
-      })
+        fromSource(redisKey, expiration, pr, block)
+      }
     }
-    promise
+    pr.future
   }
 
-  def toJson[A](ref: A): String = LaxJson.generate(ref)
+  def toJson[A](ref: A)(implicit f: Format[A]): String = Json.stringify(f.writes(ref))
 
-  def fromJson[A](json: String)(implicit m: Manifest[A]) = LaxJson.parse[A](json)
+  def fromJson[A](json: String)(implicit m: Manifest[A], f: Format[A]) = Json.fromJson(Json.parse(json)).get
 
-  def calculateAndSave[T](jedis: Jedis, redisKey: String, expiration: Duration, block: => T): T = {
+  def calculateAndSave[T](jedis: Jedis, redisKey: String, expiration: Duration, block: => T)(implicit f: Format[T]): T = {
     val result = block
     try {
       val json = toJson(result)
@@ -115,7 +102,7 @@ trait RedisCachingService[C] extends CachingService[C] {
     }
   }
 
-  def get[T](jedis: Jedis, redisKey: String)(implicit m: Manifest[T]): Option[T] = {
+  def get[T](jedis: Jedis, redisKey: String)(implicit m: Manifest[T], f: Format[T]): Option[T] = {
     try {
       Option(jedis.get(redisKey)).map(json => fromJson[T](json))
     } catch {
@@ -132,7 +119,6 @@ trait RedisCachingService[C] extends CachingService[C] {
     }
   }
 
-
   def uncache(cache: String, key: String) {
     redisService.withRedis {
       redis => redis.del(cacheKey(cache, key))
@@ -140,7 +126,7 @@ trait RedisCachingService[C] extends CachingService[C] {
     ()
   }
 
-  def cached[T](cache: String, key: String, expiration: Duration = 5 minutes, onHit: C => Unit)(block: => T)(implicit m: Manifest[T], context: C): T = {
+  def cached[T](cache: String, key: String, expiration: Duration = 5 minutes, onHit: C => Unit)(block: => T)(implicit m: Manifest[T], context: C, f: Format[T]): T = {
     val redisKey = cacheKey(cache, key)
     try {
       redisService.withRedis {
