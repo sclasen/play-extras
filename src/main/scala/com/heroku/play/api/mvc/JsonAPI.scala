@@ -9,6 +9,8 @@ import play.api.mvc.SimpleResult
 trait JsonAPI extends Controller {
   val jsonHeaders = Seq(CONTENT_TYPE -> JSON)
 
+  def json[T](status: Status, content: ToJson): SimpleResult[String] = json(status, Json.stringify(content.json))
+
   def json[T](status: Status, content: T)(implicit f: Format[T]): SimpleResult[String] = json(status, Json.stringify(Json.toJson(content)))
 
   def json[T](status: Status, content: List[T])(implicit f: Format[T]): SimpleResult[String] = json(status, Json.stringify(Json.toJson(content)))
