@@ -12,9 +12,9 @@ trait JsonAPI extends Controller {
 
   def json[T](status: Status, content: ToJson): SimpleResult[String] = json(status, Json.stringify(content.json))
 
-  def json[T](status: Status, content: T)(implicit f: Format[T]): SimpleResult[String] = json(status, Json.stringify(Json.toJson(content)))
+  def json[T](status: Status, content: T)(implicit f: Writes[T]): SimpleResult[String] = json(status, Json.stringify(Json.toJson(content)))
 
-  def json[T](status: Status, content: List[T])(implicit f: Format[T]): SimpleResult[String] = json(status, Json.stringify(Json.toJson(content)))
+  def json[T](status: Status, content: List[T])(implicit f: Writes[T]): SimpleResult[String] = json(status, Json.stringify(Json.toJson(content)))
 
   def json(status: Status, content: String): SimpleResult[String] = {
     status(content).withHeaders(jsonHeaders: _*)
@@ -29,10 +29,6 @@ trait JsonAPI extends Controller {
       case Some(s) => JsSuccess(s)
       case None => JsError("Unable to convert field " + field + " to valid value")
     }
-  }
-
-  def opt[T](js: JsValue, field: String)(implicit fjs: Reads[T]): ValidationNEL[String, Option[T]] = {
-    (js \ field).asOpt[T].success
   }
 
   def str(js: JsValue, field: String)(implicit fjs: Reads[String]): JsResult[String] = {
