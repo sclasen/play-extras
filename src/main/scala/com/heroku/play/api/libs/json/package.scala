@@ -52,4 +52,16 @@ package object json {
 
   implicit val fMapStringAny: Format[Map[String, Any]] = Format[Map[String, Any]](rMapStringAny, wMapStringAny)
 
+  implicit class RichJsError(e: JsError) {
+    def toError: Error = Error {
+      e.errors.foldLeft(new StringBuilder) {
+        case (res, (path, errors)) =>
+          res.append(path.toString()).append(" had errors ")
+          errors.foldLeft(res) {
+            case (r, e) => r.append(e.message).append(" ")
+          }
+      }.toString()
+    }
+  }
+
 }
