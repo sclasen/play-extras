@@ -18,8 +18,6 @@ package object json {
 
   implicit val fError: Format[Error] = Format(rError, wError)
   implicit val fInfo: Format[Info] = Format(rInfo, wInfo)
-  //implicit val wrError: Writeable[Error] = writeableOf_JsValue.map(wError.writes)
-  //implicit val wrInfo: Writeable[Info] = writeableOf_JsValue.map(wInfo.writes)
   implicit val wjs = Writeable.writeableOf_JsValue
 
   implicit def writesToWriteable[A](implicit wa: Writes[A]): Writeable[A] = wjs.map(wa.writes)
