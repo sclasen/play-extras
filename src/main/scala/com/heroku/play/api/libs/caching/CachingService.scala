@@ -1,6 +1,7 @@
 package com.heroku.play.api.libs.caching
 
 import scala.concurrent.duration._
+import scala.language.postfixOps
 import com.heroku.play.api.libs.redis.RedisService
 import org.slf4j.LoggerFactory
 import redis.clients.jedis.Jedis

@@ -5,6 +5,7 @@ import play.api.GlobalSettings
 import play.api.mvc.Results._
 import play.api.mvc.{ Handler, Request, Result, RequestHeader }
 import com.heroku.play.api.libs.json._
+import com.heroku.play.api.libs.json.Formats._
 
 trait HerokuGlobal extends GlobalSettings {
   val log = LoggerFactory.getLogger("Global")

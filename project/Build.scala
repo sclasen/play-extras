@@ -13,7 +13,7 @@ object Build extends Build {
     crossScalaVersions := Seq("2.10.0"),
     libraryDependencies ++= dependencies,
     resolvers ++= Seq("TypesafeMaven" at "http://repo.typesafe.com/typesafe/maven-releases", "whydoineedthis" at "http://repo.typesafe.com/typesafe/releases")
-    ) settings(publishSettings:_*) settings(testSettings:_*) settings(scalariformSettings:_*))
+    ) settings(publishSettings:_*) settings(testSettings:_*) settings(scalariformSettings:_*)).settings(scalacOptions ++= Seq("-feature", "-deprecation"))
 
   def publishSettings: Seq[Setting[_]] = Seq(
     // If we want on maven central, we need to be in maven style.

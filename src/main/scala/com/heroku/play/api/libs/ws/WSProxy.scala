@@ -1,6 +1,6 @@
 package com.heroku.play.api.libs.ws
 
-import play.api.libs.iteratee.Enumerator
+import play.api.libs.iteratee.{ Concurrent, Enumerator }
 import com.ning.http.client._
 import com.ning.http.client.AsyncHandler.STATE
 import play.api.mvc.{ Results, Result, ResponseHeader, SimpleResult }
@@ -15,19 +15,17 @@ object WSProxy {
   def proxyGetAsyncAuthenticated(url: String, authHeaderValue: String, responseHeadersToOverwrite: (String, String)*) = proxyRequestAsync(WS.client.prepareGet(url).addHeader("AUTHORIZATION", authHeaderValue).build(), responseHeadersToOverwrite.toMap)
 
   def proxyRequestAsync(req: Request, responseHeadersToOverwrite: Map[String, String] = Map.empty): Future[Result] = {
-    val enum = Enumerator.imperative[Array[Byte]]()
+    val (enum, channel) = Concurrent.broadcast[Array[Byte]]
     val headers = promise[HttpResponseHeaders]()
     val status = promise[Int]()
 
     WS.client.executeRequest(req, new AsyncHandler[Unit] {
       def onThrowable(p1: Throwable) {
-        enum.close()
+        channel.end(p1)
       }
 
       def onBodyPartReceived(part: HttpResponseBodyPart): STATE = {
-        while (!enum.push(part.getBodyPartBytes)) {
-          Thread.sleep(10)
-        }
+        channel.push(part.getBodyPartBytes)
         STATE.CONTINUE
       }
 
@@ -46,6 +44,7 @@ object WSProxy {
       }
 
       def onCompleted() {
+        channel.end()
       }
     })
 

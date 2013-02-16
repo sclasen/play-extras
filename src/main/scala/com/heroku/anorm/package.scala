@@ -17,7 +17,7 @@ package object anorm {
       val MetaDataItem(qualified, nullable, clazz) = meta
       value match {
         case o: PGobject if convert(o.getValue).isDefined => eitherToError(Right(convert(o.getValue).get)): MayErr[SqlRequestError, T]
-        case _ => eitherToError(Left(TypeDoesNotMatch("Cannot convert " + value + ":" + value.asInstanceOf[AnyRef].getClass + " to" + m.erasure.getSimpleName + "for column " + qualified)))
+        case _ => eitherToError(Left(TypeDoesNotMatch("Cannot convert " + value + ":" + value.asInstanceOf[AnyRef].getClass + " to" + m.runtimeClass.getSimpleName + "for column " + qualified)))
       }
   }
 
