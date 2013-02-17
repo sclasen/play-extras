@@ -4,6 +4,7 @@ import org.specs2.mutable.Specification
 import org.specs2.matcher.{ MatchResult, Expectable, Matcher }
 import play.api.libs.ws.Response
 import play.api.test.FakeApplication
+import play.api.db.BoneCPPlugin
 
 class AppSpecification extends Specification {
   def haveStatus(status: Int*): Matcher[Response] = new Matcher[Response] {
@@ -35,7 +36,7 @@ class AppSpecification extends Specification {
 object AppSpecification {
 
   lazy val _testApp = {
-    val app = FakeApplication(additionalPlugins = Seq("com.heroku.play.api.lib.test.TestDBPlugin"), withoutPlugins = Seq("play.api.db.BoneCPPlugin"))
+    val app = FakeApplication(additionalPlugins = Seq(classOf[TestDBPlugin].getName), withoutPlugins = Seq(classOf[BoneCPPlugin].getName))
     play.api.Play.start(app)
     app
   }

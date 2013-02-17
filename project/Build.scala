@@ -8,7 +8,7 @@ object Build extends Build {
   val playextras = (Project("play-extras", file(".")) settings(
     organization := "com.sclasen",
     name := "play-extras",
-    version := "0.2.5-SNAPSHOT",
+    version := "0.2.6-SNAPSHOT",
     scalaVersion := "2.10.0",
     crossScalaVersions := Seq("2.10.0"),
     libraryDependencies ++= dependencies,
@@ -54,7 +54,8 @@ object Build extends Build {
 
   def testSettings: Seq[Setting[_]] = Seq(
     testOptions in Test += Tests.Argument("junitxml"),
-    testOptions in Test += Tests.Argument("console")
+    testOptions in Test += Tests.Argument("console"),
+    publishArtifact in Test := true
   )
 
   def dependencies = Seq(
