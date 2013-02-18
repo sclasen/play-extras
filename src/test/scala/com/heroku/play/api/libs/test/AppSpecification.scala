@@ -1,12 +1,22 @@
 package com.heroku.play.api.libs.test
 
-import org.specs2.mutable.Specification
+import com.heroku.play.api.libs.json.Formats._
+import com.heroku.play.api.libs.mvc.BasicAuth
 import org.specs2.matcher.{ MatchResult, Expectable, Matcher }
-import play.api.libs.ws.Response
-import play.api.test.FakeApplication
+import org.specs2.mutable.Specification
 import play.api.db.BoneCPPlugin
+import play.api.libs.ws.Response
+import play.api.libs.ws.WS
+import play.api.test.FakeApplication
+import play.api.test.Helpers._
+import play.api.http.{ Writeable, ContentTypeOf }
+import play.api.libs.json.{ Writes, JsValue }
 
 class AppSpecification extends Specification {
+
+  val serverUrl = sys.env.get("TEST_SERVER_URL").getOrElse("http://localhost:9000")
+  implicit def jsonType[T](implicit wt: Writes[T], wj: Writes[JsValue], w: Writeable[JsValue]): ContentTypeOf[T] = ContentTypeOf(ContentTypeOf.contentTypeOf_JsValue.mimeType)
+
   def haveStatus(status: Int*): Matcher[Response] = new Matcher[Response] {
     def apply[S <: Response](t: Expectable[S]): MatchResult[S] = {
       def bodyOrError[S <: Response](t: Expectable[S]) = {
@@ -27,9 +37,26 @@ class AppSpecification extends Specification {
   }
 
   def runningApp[T](block: => T): T = {
-    AppSpecification._testApp
+    testApp
     block
   }
+
+  def api(auth: String, path: Any*) = {
+    val url = path.foldLeft(new StringBuilder(serverUrl))(_.append(_)).toString()
+    WS.url(url).withHeaders(AUTHORIZATION -> auth)
+  }
+
+  def jsonAPI(auth: String, path: Any*) = api(auth, path: _*).withHeaders(CONTENT_TYPE -> "application/json")
+
+  def jsonAPIPost(auth: String, map: Map[String, Any], path: Any*) = jsonAPI(auth, path: _*).post(map)
+
+  def jsonAPIPut(auth: String, map: Map[String, Any], path: Any*) = jsonAPI(auth, path: _*).put(map)
+
+  def asBasic(key: String): String = BasicAuth(key)
+
+  def require(key: String): String = sys.env.get(key).getOrElse(sys.error(key + " not found in env"))
+
+  def testApp: FakeApplication = AppSpecification._testApp
 
 }
 
