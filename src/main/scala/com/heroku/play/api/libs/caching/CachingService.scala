@@ -1,24 +1,24 @@
 package com.heroku.play.api.libs.caching
 
+import com.heroku.play.api.libs.redis.RedisService
+import concurrent.{ Future, Promise, future, promise }
+import org.slf4j.LoggerFactory
+import play.api.libs.concurrent.Execution.Implicits.defaultContext
+import play.api.libs.json._
+import redis.clients.jedis.Jedis
 import scala.concurrent.duration._
 import scala.language.postfixOps
-import com.heroku.play.api.libs.redis.RedisService
-import org.slf4j.LoggerFactory
-import redis.clients.jedis.Jedis
-import concurrent.{ Future, Promise, future, promise }
-import util.{ Failure, Success }
-import play.api.libs.json._
-import play.api.libs.concurrent.Execution.Implicits.defaultContext
+import scala.util.{ Failure, Success }
 
 trait CachingService[C] {
 
   def asyncUncache(cache: String, key: String)
 
-  def asyncCached[T](cache: String, key: String, expiration: Duration = 5 minutes, onHit: C => Unit = defaultOnHit(_))(block: => Future[T])(implicit m: Manifest[T], context: C): Future[T]
+  def asyncCached[T](cache: String, key: String, expiration: Duration = 5 minutes, onHit: C => Unit = defaultOnHit(_))(block: => Future[T])(implicit m: Manifest[T], context: C, f: Format[T]): Future[T]
 
   def uncache(cache: String, key: String)
 
-  def cached[T](cache: String, key: String, expiration: Duration = 5 minutes, onHit: C => Unit = defaultOnHit(_))(block: => T)(implicit m: Manifest[T], context: C): T
+  def cached[T](cache: String, key: String, expiration: Duration = 5 minutes, onHit: C => Unit = defaultOnHit(_))(block: => T)(implicit m: Manifest[T], context: C, f: Format[T]): T
 
   def defaultOnHit(c: C) {}
 }
@@ -61,7 +61,7 @@ trait RedisCachingService[C] extends CachingService[C] {
     ()
   }
 
-  def asyncCached[T](cache: String, key: String, expiration: Duration = 5 minutes, onHit: C => Unit)(block: => Future[T])(implicit m: Manifest[T], context: C, f: Format[T]): Future[T] = {
+  override def asyncCached[T](cache: String, key: String, expiration: Duration = 5 minutes, onHit: C => Unit)(block: => Future[T])(implicit m: Manifest[T], context: C, f: Format[T]): Future[T] = {
     val redisKey = cacheKey(cache, key)
     val pr = promise[T]
     future {
