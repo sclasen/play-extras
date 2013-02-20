@@ -15,17 +15,18 @@ object WSProxy {
   def proxyGetAsyncAuthenticated(url: String, authHeaderValue: String, responseHeadersToOverwrite: (String, String)*) = proxyRequestAsync(WS.client.prepareGet(url).addHeader("AUTHORIZATION", authHeaderValue).build(), responseHeadersToOverwrite.toMap)
 
   def proxyRequestAsync(req: Request, responseHeadersToOverwrite: Map[String, String] = Map.empty): Future[Result] = {
-    val (enum, channel) = Concurrent.broadcast[Array[Byte]]
+    val enum = Enumerator.imperative[Array[Byte]]()
     val headers = promise[HttpResponseHeaders]()
     val status = promise[Int]()
 
     WS.client.executeRequest(req, new AsyncHandler[Unit] {
       def onThrowable(p1: Throwable) {
-        channel.end(p1)
       }
 
       def onBodyPartReceived(part: HttpResponseBodyPart): STATE = {
-        channel.push(part.getBodyPartBytes)
+        while (!enum.push(part.getBodyPartBytes)) {
+          Thread.sleep(10)
+        }
         STATE.CONTINUE
       }
 
@@ -44,7 +45,6 @@ object WSProxy {
       }
 
       def onCompleted() {
-        channel.end()
       }
     })
 
