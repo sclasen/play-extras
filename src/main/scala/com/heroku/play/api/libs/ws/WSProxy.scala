@@ -41,7 +41,9 @@ object WSProxy extends Controller {
 
       def onHeadersReceived(h: HttpResponseHeaders): STATE = {
         headers.success(h)
-        if (h.getHeaders.containsKey("Content-Length") && h.getHeaders.get("Content-Length").get(0) != "0") {
+        if (h.getHeaders.containsKey("transfer-encoding") && h.getHeaders.get("transfer-encoding").get(0) == "chunked") {
+          STATE.CONTINUE
+        } else if (h.getHeaders.containsKey("Content-Length") && h.getHeaders.get("Content-Length").get(0) != "0") {
           STATE.CONTINUE
         } else {
           STATE.ABORT
