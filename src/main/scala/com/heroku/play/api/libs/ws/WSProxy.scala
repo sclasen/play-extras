@@ -49,6 +49,7 @@ object WSProxy extends Controller {
       }
 
       def onCompleted() {
+        enum.close()
       }
     })
 
