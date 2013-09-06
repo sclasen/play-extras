@@ -2,7 +2,6 @@ package com.heroku.play.api.libs.security
 
 import org.specs2.mutable.Specification
 
-
 class CredentialsServiceSpec extends Specification {
 
   "Credentials Service" should {
@@ -18,14 +17,12 @@ class CredentialsServiceSpec extends Specification {
     val cpassword: String = CredentialsService.generateKey()
     val chashed = CredentialsService.hashPassword(cpassword)
 
-
     (1 to 100).map {
       i =>
         ("verify hashed passwords cached " + i) in {
           CredentialsService.checkPasswordAgainstHashCached(cpassword, chashed) mustEqual (true)
         }
     }
-
 
     (1 to 100).map {
       i =>

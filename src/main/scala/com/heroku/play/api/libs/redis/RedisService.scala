@@ -1,6 +1,5 @@
 package com.heroku.play.api.libs.redis
 
-
 import java.net.URI
 import org.slf4j.LoggerFactory
 import redis.clients.jedis._
@@ -8,7 +7,6 @@ import scala.Some
 import org.apache.commons.pool.impl.GenericObjectPool.Config
 import java.util.concurrent.atomic.AtomicInteger
 import play.api.Play.current
-
 
 object RedisService {
   lazy val redisUrl = current.configuration.getString(configName).map(uri => new URI(uri))

@@ -1,10 +1,9 @@
 package com.heroku.play.api.libs.logging
 
-
-import ch.qos.logback.core.{Layout, Appender}
-import akka.actor.{ActorSystem, Props, Actor}
+import ch.qos.logback.core.{ Layout, Appender }
+import akka.actor.{ ActorSystem, Props, Actor }
 import ch.qos.logback.classic.spi.ILoggingEvent
-import ch.qos.logback.core.spi.{FilterAttachableImpl, FilterReply, ContextAwareBase}
+import ch.qos.logback.core.spi.{ FilterAttachableImpl, FilterReply, ContextAwareBase }
 import java.util
 import ch.qos.logback.core.filter.Filter
 import reflect.BeanProperty
@@ -19,11 +18,10 @@ class ConsoleActor extends Actor {
 
   var layout: Layout[ILoggingEvent] = _
 
-  protected def receive = {
+  def receive = {
     case s: String => print(s)
   }
 }
-
 
 class ActorBasedConsoleAppender extends ContextAwareBase with Appender[ILoggingEvent] {
 

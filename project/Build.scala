@@ -1,5 +1,6 @@
 import sbt._
 import Keys._
+import com.typesafe.sbt.SbtScalariform._
 
 
 object Build extends Build {
@@ -7,12 +8,12 @@ object Build extends Build {
   val playextras = (Project("play-extras", file(".")) settings(
     organization := "com.sclasen",
     name := "play-extras",
-    version := "0.1.6-SNAPSHOT",
-    scalaVersion := "2.9.1",
-    crossScalaVersions := Seq("2.9.1"),
+    version := "0.2.12-SNAPSHOT",
+    scalaVersion := "2.10.0",
+    crossScalaVersions := Seq("2.10.0"),
     libraryDependencies ++= dependencies,
     resolvers ++= Seq("TypesafeMaven" at "http://repo.typesafe.com/typesafe/maven-releases", "whydoineedthis" at "http://repo.typesafe.com/typesafe/releases")
-    ) settings(publishSettings:_*) settings(testSettings:_*) )
+    ) settings(publishSettings:_*) settings(testSettings:_*) settings(scalariformSettings:_*)).settings(scalacOptions ++= Seq("-feature", "-deprecation"))
 
   def publishSettings: Seq[Setting[_]] = Seq(
     // If we want on maven central, we need to be in maven style.
@@ -53,25 +54,27 @@ object Build extends Build {
 
   def testSettings: Seq[Setting[_]] = Seq(
     testOptions in Test += Tests.Argument("junitxml"),
-    testOptions in Test += Tests.Argument("console")
+    testOptions in Test += Tests.Argument("console"),
+    publishArtifact in Test := true
   )
 
   def dependencies = Seq(
-    "play" %% "play" % "2.0.2",
-    "play" %% "anorm" % "2.0.2",
-    "com.typesafe.akka" % "akka-actor" % "2.0.2",
+    "play" %% "play" % "2.1.0",
+    "play" %% "anorm" % "2.1.0",
+    "play" %% "play-jdbc" % "2.1.0",
+    "com.typesafe.akka" %% "akka-actor" % "2.1.0",
     "postgresql" % "postgresql" % "9.1-901-1.jdbc4",
     "org.scalaz" %% "scalaz-core" % "6.0.4",
     "redis.clients" % "jedis" % "2.1.0",
-    "org.slf4j"                         %    "slf4j-api"                %   "1.6.4",
-    "ch.qos.logback"                    %    "logback-core"             %   "1.0.3",
-    "ch.qos.logback"                    %    "logback-classic"          %   "1.0.3",
+    "org.slf4j"                         %    "slf4j-api"                %   "1.6.6",
+    "ch.qos.logback"                    %    "logback-core"             %   "1.0.7",
+    "ch.qos.logback"                    %    "logback-classic"          %   "1.0.7",
     "org.jasypt" % "jasypt" % "1.9.0",
     "org.bouncycastle" % "bcpg-jdk15on" % "1.47",
     "org.bouncycastle" % "bcprov-ext-jdk15on" % "1.47",
     "org.mindrot" % "jbcrypt" % "0.3m",
-    "org.specs2"                        %%   "specs2"                   %   "1.9"      %  "test",
-    "play" %% "play-test" % "2.0.2" % "test"
+    "org.specs2"                        %%   "specs2"                   %   "1.13"      %  "test",
+    "play" %% "play-test" % "2.1.0" % "test"
   )
 
 
