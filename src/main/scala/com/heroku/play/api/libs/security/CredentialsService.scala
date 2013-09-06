@@ -1,15 +1,14 @@
 package com.heroku.play.api.libs.security
 
 import org.mindrot.jbcrypt.BCrypt
-import sun.misc.{BASE64Decoder, BASE64Encoder}
+import sun.misc.{ BASE64Decoder, BASE64Encoder }
 import play.api.Play.current
-import java.security.{MessageDigest, SecureRandom}
+import java.security.{ MessageDigest, SecureRandom }
 import org.jasypt.encryption.pbe.PooledPBEStringEncryptor
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.util.concurrent.ConcurrentHashMap
 import org.jasypt.encryption.StringEncryptor
 import org.jasypt.salt.RandomSaltGenerator
-
 
 object CredentialsService {
 
@@ -47,7 +46,6 @@ object CredentialsService {
       }
     }
   }
-
 
   def createCryptor(secretKey: String): StringEncryptor = {
     val cryptor = new PooledPBEStringEncryptor()
@@ -98,13 +96,11 @@ object CredentialsService {
     masked
   }
 
-
   def unmaskKey(maskedSecretKeyEnvVar: String, maskPlayConfigName: String): String = {
     val maskedKey: String = sys.env.get(maskedSecretKeyEnvVar).getOrElse(sys.error(maskedSecretKeyEnvVar + " not found in the environment"))
     val mask = current.configuration.getString(maskPlayConfigName).getOrElse(sys.error(maskPlayConfigName + " not found in current config"))
     unxor(maskedKey, mask)
   }
-
 
   def xor(key: String, xorStr: String): String = {
     val bytes = key.zipWithIndex.map {
@@ -139,6 +135,5 @@ object CredentialsService {
       _ + _
     }
   }
-
 
 }

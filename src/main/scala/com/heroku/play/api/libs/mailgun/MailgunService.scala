@@ -2,14 +2,15 @@ package com.heroku.play.api.libs.mailgun
 
 import play.api.Play._
 import com.heroku.play.api.libs.mvc
-import play.api.libs.concurrent.{PurePromise, Promise}
-import play.api.libs.ws.{Response, WS}
+import play.api.libs.ws.{ Response, WS }
 import play.api.http.HeaderNames._
 import play.api.http.ContentTypes._
 import MailgunService._
-import com.codahale.jerkson.{Json => Jerkson}
 import org.slf4j.LoggerFactory
 import java.net.URLEncoder
+import concurrent.Future
+import play.api.libs.json._
+import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
 object MailgunService {
 
@@ -25,45 +26,61 @@ object MailgunService {
   def apply(apiKey: String, domain: String): MailgunService = {
     new MailgunService(apiKey, domain)
   }
-}
 
+  implicit val m = Json.reads[Member]
+  implicit val me = (__ \ "items").read[List[Member]].map { l => MemberList(l) }
+  implicit val ro = Json.reads[Route]
+  implicit val cr = Json.reads[CreateRoute]
+  implicit val rr = Json.reads[RouteResponse]
+  implicit val mr = Json.reads[MemberResponse]
+  implicit val ml = Json.reads[MailingList]
+  implicit val lr = Json.reads[ListResponse]
+  implicit val mll = (__ \ "items").read[List[MailingList]].map { l => MailingListList(l) }
+  implicit val rd = Json.reads[RouteUpdated]
+  implicit val ru = Json.reads[RouteDeleted]
+  implicit val rl = Json.reads[RoutesList]
+  implicit val err = Json.reads[ErrorResponse]
+  implicit val mb = Json.reads[Mailbox]
+  implicit val mbl = Json.reads[MailboxList]
+  implicit val mer = Json.reads[MessageResponse]
+  implicit val md = Json.reads[MailboxDeleted]
+  implicit def ok[T](implicit r: Reads[T]) = (__ \ "ok").read[T].map(t => OkResponse(t))
+}
 
 class MailgunService(apiKey: String, val mailgunDomain: String) {
 
   val mailgunBasicAuth = mvc.BasicAuth("api", apiKey)
 
-
-  def createMailingList(address: String, domain: Option[String] = None, name: Option[String] = None, description: Option[String] = None): Promise[MailgunResponse[ListResponse]] = {
+  def createMailingList(address: String, domain: Option[String] = None, name: Option[String] = None, description: Option[String] = None): Future[MailgunResponse[ListResponse]] = {
     val email = domain.map(d => address + "@" + d).getOrElse(address + "@" + mailgunDomain)
     post("/lists", "address" -> email).map(parseResp[ListResponse]).flatMap {
       case ErrorResponse(400, msg) if msg.endsWith("already exists") => getMailingList(address, domain)
-      case x@_ => PurePromise(x)
+      case x @ _ => Future(x)
     }
   }
 
-  def getMailingLists(limit: Int = 100, skip: Int = 0): Promise[MailgunResponse[MailingListList]] = {
+  def getMailingLists(limit: Int = 100, skip: Int = 0): Future[MailgunResponse[MailingListList]] = {
     prepare("/lists").withQueryString("limit" -> limit.toString, "skip" -> skip.toString).get().map(parseResp[MailingListList])
   }
 
-
-  private def getMailingLists(list: MailingListList, skip: Int): Promise[MailgunResponse[MailingListList]] = {
+  private def getMailingLists(list: MailingListList, skip: Int): Future[MailgunResponse[MailingListList]] = {
     getMailingLists(100, skip).flatMap {
-      case o@OkResponse(m@MailingListList(items)) if items.size < 100 => PurePromise(OkResponse(list + m))
-      case OkResponse(m@MailingListList(_)) => getMailingLists(list + m, skip + 100)
-      case e: ErrorResponse => PurePromise(e)
+      case o @ OkResponse(m @ MailingListList(items)) if items.size < 100 => Future(OkResponse(list + m))
+      case OkResponse(m @ MailingListList(_)) => getMailingLists(list + m, skip + 100)
+      case e: ErrorResponse => Future(e)
     }
   }
 
-  def getAllMailingLists(): Promise[MailgunResponse[MailingListList]] = {
+  def getAllMailingLists(): Future[MailgunResponse[MailingListList]] = {
     getMailingLists(MailingListList(List.empty), 0)
   }
 
-  def getMailingList(address: String, domain: Option[String] = None): Promise[MailgunResponse[ListResponse]] = {
+  def getMailingList(address: String, domain: Option[String] = None): Future[MailgunResponse[ListResponse]] = {
     val email = domain.map(d => address + "@" + d).getOrElse(address + "@" + mailgunDomain)
     prepare("/lists/" + email).get().map(parseResp[ListResponse])
   }
 
-  def deleteMailingList(address: String, domain: Option[String] = None): Promise[MailgunResponse[Unit]] = {
+  def deleteMailingList(address: String, domain: Option[String] = None): Future[MailgunResponse[Unit]] = {
     val email = domain.map(d => address + "@" + d).getOrElse(address + "@" + mailgunDomain)
     prepare("/lists/" + email).delete().map {
       resp =>
@@ -72,79 +89,77 @@ class MailgunService(apiKey: String, val mailgunDomain: String) {
     }
   }
 
-  def addMemberToList(member: String, list: String, listDomain: Option[String] = None): Promise[MailgunResponse[MemberResponse]] = {
+  def addMemberToList(member: String, list: String, listDomain: Option[String] = None): Future[MailgunResponse[MemberResponse]] = {
     val listMail = listDomain.map(d => list + "@" + d).getOrElse(list + "@" + mailgunDomain)
     post("/lists/" + listMail + "/members", "address" -> member, "upsert" -> "yes").map(parseResp[MemberResponse])
   }
 
-  def listMembers(list: String, listDomain: Option[String] = None): Promise[MailgunResponse[MemberList]] = {
+  def listMembers(list: String, listDomain: Option[String] = None): Future[MailgunResponse[MemberList]] = {
     val listMail = listDomain.map(d => list + "@" + d).getOrElse(list + "@" + mailgunDomain)
     prepare("/lists/" + listMail + "/members").get().map(parseResp[MemberList])
   }
 
-
-  def removeMemberFromList(member: String, list: String, listDomain: Option[String] = None): Promise[MailgunResponse[MemberResponse]] = {
+  def removeMemberFromList(member: String, list: String, listDomain: Option[String] = None): Future[MailgunResponse[MemberResponse]] = {
     val listMail = listDomain.map(d => list + "@" + d).getOrElse(list + "@" + mailgunDomain)
     prepare("/lists/" + listMail + "/members/" + member).delete().map(parseResp[MemberResponse])
   }
 
-  def getRoutes(limit: Int = 100, skip: Int = 0): Promise[MailgunResponse[RoutesList]] = {
+  def getRoutes(limit: Int = 100, skip: Int = 0): Future[MailgunResponse[RoutesList]] = {
     prepare("/routes").withQueryString("limit" -> limit.toString, "skip" -> skip.toString).get().map(parseResp[RoutesList])
   }
 
-  private def getRoutes(list: RoutesList, skip: Int): Promise[MailgunResponse[RoutesList]] = {
+  private def getRoutes(list: RoutesList, skip: Int): Future[MailgunResponse[RoutesList]] = {
     getRoutes(100, skip).flatMap {
-      case o@OkResponse(r@RoutesList(count, items)) if items.size < 100 => PurePromise(OkResponse(list + r))
-      case OkResponse(r@RoutesList(_, _)) => getRoutes(list + r, skip + 100)
-      case e: ErrorResponse => PurePromise(e)
+      case o @ OkResponse(r @ RoutesList(count, items)) if items.size < 100 => Future(OkResponse(list + r))
+      case OkResponse(r @ RoutesList(_, _)) => getRoutes(list + r, skip + 100)
+      case e: ErrorResponse => Future(e)
     }
   }
 
-  def getAllRoutes(): Promise[MailgunResponse[RoutesList]] = {
+  def getAllRoutes(): Future[MailgunResponse[RoutesList]] = {
     getRoutes(RoutesList(0, List.empty), 0)
   }
 
-  def getRoute(id: String): Promise[MailgunResponse[RouteResponse]] = {
+  def getRoute(id: String): Future[MailgunResponse[RouteResponse]] = {
     prepare("/routes/" + id).get().map(parseResp[RouteResponse])
   }
 
-  def updateRoute(route: Route): Promise[MailgunResponse[RouteUpdated]] = {
+  def updateRoute(route: Route): Future[MailgunResponse[RouteUpdated]] = {
     put("/routes/" + route.id, routesParams(route): _*).map(parseResp[RouteUpdated])
   }
 
-  def createRoute(route: CreateRoute): Promise[MailgunResponse[RouteResponse]] = {
+  def createRoute(route: CreateRoute): Future[MailgunResponse[RouteResponse]] = {
     post("/routes", routesParams(route): _*).map(parseResp[RouteResponse])
   }
 
-  def deleteRoute(id: String): Promise[MailgunResponse[RouteDeleted]] = {
+  def deleteRoute(id: String): Future[MailgunResponse[RouteDeleted]] = {
     prepare("/routes/" + id).delete().map(parseResp[RouteDeleted])
   }
 
-  def createMailbox(name: String, password: String, domain: Option[String] = None): Promise[MailgunResponse[MessageResponse]] = {
+  def createMailbox(name: String, password: String, domain: Option[String] = None): Future[MailgunResponse[MessageResponse]] = {
     val mboxDomain = domain.getOrElse(mailgunDomain)
     val mailbox = name + "@" + mboxDomain
     post("/" + mboxDomain + "/mailboxes", "mailbox" -> mailbox, "password" -> password).map(parseResp[MessageResponse])
   }
 
-  def getMailboxes(limit: Int = 100, skip: Int = 0, domain: Option[String] = None): Promise[MailgunResponse[MailboxList]] = {
+  def getMailboxes(limit: Int = 100, skip: Int = 0, domain: Option[String] = None): Future[MailgunResponse[MailboxList]] = {
     val mboxDomain = domain.getOrElse(mailgunDomain)
     prepare("/" + mboxDomain + "/mailboxes").withQueryString("limit" -> limit.toString, "skip" -> skip.toString).get().map(parseResp[MailboxList])
   }
 
-  private def getMailboxes(list: MailboxList, skip: Int, domain: Option[String]): Promise[MailgunResponse[MailboxList]] = {
+  private def getMailboxes(list: MailboxList, skip: Int, domain: Option[String]): Future[MailgunResponse[MailboxList]] = {
     getMailboxes(100, skip, domain).flatMap {
-      case o@OkResponse(m@MailboxList(count, items)) if items.size < 100 => PurePromise(OkResponse(list + m))
-      case OkResponse(m@MailboxList(_, _)) => getMailboxes(list + m, skip + 100, domain)
-      case e: ErrorResponse => PurePromise(e)
+      case o @ OkResponse(m @ MailboxList(count, items)) if items.size < 100 => Future(OkResponse(list + m))
+      case OkResponse(m @ MailboxList(_, _)) => getMailboxes(list + m, skip + 100, domain)
+      case e: ErrorResponse => Future(e)
     }
   }
 
-  def getAllMailboxes(domain: Option[String] = None): Promise[MailgunResponse[MailboxList]] = {
+  def getAllMailboxes(domain: Option[String] = None): Future[MailgunResponse[MailboxList]] = {
     getMailboxes(MailboxList(0, List.empty), 0, domain)
   }
 
-
-  def updateMailboxPassword(name: String, password: String, domain: Option[String] = None): Promise[MailgunResponse[MessageResponse]] = {
+  def updateMailboxPassword(name: String, password: String, domain: Option[String] = None): Future[MailgunResponse[MessageResponse]] = {
     val mboxDomain = domain.getOrElse(mailgunDomain)
     val mailbox = name + "@" + mboxDomain
     put("/" + mboxDomain + "/mailboxes/" + mailbox, "password" -> password).map {
@@ -153,7 +168,7 @@ class MailgunService(apiKey: String, val mailgunDomain: String) {
     }
   }
 
-  def deleteMailbox(name: String, domain: Option[String] = None): Promise[MailgunResponse[MailboxDeleted]] = {
+  def deleteMailbox(name: String, domain: Option[String] = None): Future[MailgunResponse[MailboxDeleted]] = {
     val mboxDomain = domain.getOrElse(mailgunDomain)
     val mailbox = name + "@" + mboxDomain
     prepare("/" + mboxDomain + "/mailboxes/" + mailbox).delete().map {
@@ -162,16 +177,15 @@ class MailgunService(apiKey: String, val mailgunDomain: String) {
     }
   }
 
-
   private def routesParams(route: Route) = Seq("priority" -> route.priority.toString, "description" -> route.description, "expression" -> route.expression) ++
     route.actions.map(a => "action" -> a)
 
   private def routesParams(route: CreateRoute) = Seq("priority" -> route.priority.toString, "description" -> route.description, "expression" -> route.expression) ++
     route.actions.map(a => "action" -> a)
 
-  private def post(path: String, fields: (String, String)*): Promise[Response] = prepare(path).withHeaders(CONTENT_TYPE -> FORM).post(encode(fields))
+  private def post(path: String, fields: (String, String)*): Future[Response] = prepare(path).withHeaders(CONTENT_TYPE -> FORM).post(encode(fields))
 
-  private def put(path: String, fields: (String, String)*): Promise[Response] = prepare(path).withHeaders(CONTENT_TYPE -> FORM).put(encode(fields))
+  private def put(path: String, fields: (String, String)*): Future[Response] = prepare(path).withHeaders(CONTENT_TYPE -> FORM).put(encode(fields))
 
   private def encode(fields: Seq[(String, String)]) = fields.map {
     case (k, v) => k + "=" + URLEncoder.encode(v, "UTF-8")
@@ -181,7 +195,7 @@ class MailgunService(apiKey: String, val mailgunDomain: String) {
     WS.url(mailgunBaseUrl + path).withHeaders(AUTHORIZATION -> mailgunBasicAuth, ACCEPT -> "application/json")
   }
 
-  private def parseResp[T: Manifest](resp: Response): MailgunResponse[T] = {
+  private def parseResp[T](resp: Response)(implicit r: Reads[T]): MailgunResponse[T] = {
     if (resp.status == 200) {
       ok[T](resp)
     } else {
@@ -189,19 +203,19 @@ class MailgunService(apiKey: String, val mailgunDomain: String) {
     }
   }
 
-  private def parse[T: Manifest](resp: Response, fn: T => MailgunResponse[T]): MailgunResponse[T] = {
+  private def parse[T](resp: Response, fn: T => MailgunResponse[T])(implicit read: Reads[T]): MailgunResponse[T] = {
     try {
-      fn(Jerkson.parse[T](resp.body))
+      fn(Json.parse(resp.body).as[T])
     } catch {
       case e: Exception => ErrorResponse(resp.status, "Unable to parse response:" + resp.body)
     }
   }
 
-  private def ok[T: Manifest](resp: Response) = parse[T](resp, OkResponse(_))
+  private def ok[T](resp: Response)(implicit read: Reads[T]) = parse[T](resp, OkResponse(_))
 
   private def err(resp: Response) = {
-    val atts = Jerkson.parse[Map[String, String]](resp.body)
-    ErrorResponse(resp.status, atts.get("message").getOrElse("no message"))
+    val atts = Json.parse(resp.body)
+    ErrorResponse(resp.status, (atts \ "message").asOpt[String].getOrElse("no message"))
   }
 
 }
@@ -249,6 +263,4 @@ case class MailboxList(total_count: Int, items: List[Mailbox]) {
 case class MessageResponse(message: String)
 
 case class MailboxDeleted(message: String, spec: String)
-
-
 
