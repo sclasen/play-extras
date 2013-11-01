@@ -3,8 +3,9 @@ package com.heroku.play.api.db.evolutions
 import org.slf4j.LoggerFactory
 import play.api.db.DBPlugin
 import play.api.{ Mode, Logger, Application }
-import play.api.db.evolutions.{ EvolutionsPlugin => PlayEvolutionsPlugin, ScriptAccessor, Evolutions, InvalidDatabaseRevision }
+import play.api.db.evolutions.{ EvolutionsPlugin => PlayEvolutionsPlugin, Evolution, ScriptAccessor, Evolutions, InvalidDatabaseRevision }
 import play.api.db.evolutions.Evolutions._
+import java.io.File
 
 /*
 Note to use this plugin, you need to add a conf/play.plugins file to your app that looks like
@@ -57,6 +58,15 @@ class EvolutionsPlugin(app: Application) extends PlayEvolutionsPlugin(app) {
         }
       }
       case (ds, db) => Logger("play").warn("Evolutions are Globally Enabled, but selectively disabled for:" + db)
+    }
+  }
+
+  def squashEvolutions() {
+    val api = app.plugin[DBPlugin].map(_.api).getOrElse(throw new Exception("there should be a database plugin registered at this point but looks like it's not available, so evolution won't work. Please make sure you register a db plugin properly"))
+    api.datasources.foreach {
+      case (ds, db) if app.configuration.getString("evolutions." + db).filter(_ == "enabled").isDefined => {
+        ScriptAccessor.squashEvolutions(app.path, db)
+      }
     }
   }
 
