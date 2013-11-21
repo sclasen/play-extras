@@ -1,6 +1,6 @@
 package com.heroku.play.api.libs.ws
 
-import play.api.libs.iteratee.{ Iteratee, Concurrent, Enumerator }
+import play.api.libs.iteratee.{ Step, Iteratee, Concurrent, Enumerator }
 import com.ning.http.client._
 import com.ning.http.client.AsyncHandler.STATE
 import play.api.mvc._
@@ -74,6 +74,57 @@ object WSProxy extends Controller {
         }
     }
 
+  }
+
+  def betterProxyRequestAsync(url: String, responseHeadersToOverwrite: Map[String, String] = Map.empty): Future[Result] = {
+    val result = Promise[PlainResult]
+    WS.url(url).get { responseHeader =>
+      val (iteratee, enumerator) = joined[Array[Byte]]
+      // depending on whether you have a content length, you may need to apply the Results.chunked enumeratee and add chunked headers to the result here.
+      result.trySuccess(Status(responseHeader.status).stream(enumerator))
+      iteratee
+    }.recover {
+      case _ =>
+        result.trySuccess(InternalServerError)
+        Iteratee.ignore
+    }.flatMap(_.run) // <- very important, don't forget this one, otherwise
+    result.future
+  }
+
+  def joined[A]: (Iteratee[A, Unit], Enumerator[A]) = {
+    val promisedIteratee = Promise[Iteratee[A, Unit]]()
+    val enumerator = new Enumerator[A] {
+      def apply[B](i: Iteratee[A, B]) = {
+        val doneIteratee = Promise[Iteratee[A, B]]()
+
+        // Equivalent to map, but allows us to handle failures
+        def wrap(delegate: Iteratee[A, B]): Iteratee[A, B] = new Iteratee[A, B] {
+          def fold[C](folder: (Step[A, B]) => Future[C]) = {
+            val toReturn = delegate.fold {
+              case done @ Step.Done(a, in) => {
+                doneIteratee.success(done.it)
+                folder(done)
+              }
+              case Step.Cont(k) => {
+                folder(Step.Cont(k.andThen(wrap)))
+              }
+              case err => folder(err)
+            }
+            toReturn.onFailure {
+              case e => doneIteratee.failure(e)
+            }
+            toReturn
+          }
+        }
+
+        if (promisedIteratee.trySuccess(wrap(i).map(_ => ()))) {
+          doneIteratee.future
+        } else {
+          throw new IllegalStateException("Joined enumerator may only be applied once")
+        }
+      }
+    }
+    (Iteratee.flatten(promisedIteratee.future), enumerator)
   }
 
 }
