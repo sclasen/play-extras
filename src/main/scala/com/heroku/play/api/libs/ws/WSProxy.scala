@@ -81,7 +81,10 @@ object WSProxy extends Controller {
     WS.url(url).get { responseHeader =>
       val (iteratee, enumerator) = joined[Array[Byte]]
       // depending on whether you have a content length, you may need to apply the Results.chunked enumeratee and add chunked headers to the result here.
-      result.trySuccess(Status(responseHeader.status).stream(enumerator))
+      val headers = responseHeader.headers.map {
+        case (k, v) => k -> v.head
+      }.toSeq
+      result.trySuccess(Status(responseHeader.status).stream(enumerator).withHeaders(headers: _*))
       iteratee
     }.recover {
       case _ =>
