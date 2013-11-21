@@ -83,8 +83,15 @@ object WSProxy extends Controller {
       // depending on whether you have a content length, you may need to apply the Results.chunked enumeratee and add chunked headers to the result here.
       val headers = responseHeader.headers.map {
         case (k, v) => k -> v.head
-      }.toSeq
-      result.trySuccess(Status(responseHeader.status).stream(enumerator).withHeaders(headers: _*))
+      }
+      result.trySuccess {
+        responseHeader.headers.get("Content-Length").map {
+          _ =>
+            SimpleResult(ResponseHeader(responseHeader.status, headers), enumerator)
+        }.getOrElse {
+          Status(responseHeader.status).stream(enumerator).withHeaders(headers.toSeq: _*)
+        }
+      }
       iteratee
     }.recover {
       case _ =>
