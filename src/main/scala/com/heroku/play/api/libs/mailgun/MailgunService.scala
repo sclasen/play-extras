@@ -47,7 +47,7 @@ object MailgunService {
   implicit val md = Json.reads[MailboxDeleted]
   implicit def ok[T](implicit r: Reads[T]) = (__ \ "ok").read[T].map(t => OkResponse(t))
   implicit val mmm: Reads[MailgunMimeMessage] = (
-    (__ \ "To").read[String] ~
+    (__ \ "recipients").read[String] ~
     (__ \ "sender").read[String] ~
     (__ \ "from").read[String] ~
     (__ \ "subject").read[String] ~
@@ -284,7 +284,7 @@ case class MessageResponse(message: String)
 
 case class MailboxDeleted(message: String, spec: String)
 
-case class MailgunMimeMessage(To: String, sender: String, from: String, subject: String, body_mime: String)
+case class MailgunMimeMessage(recipients: String, sender: String, from: String, subject: String, body_mime: String)
 
 case class MaligunMimeDeleted(message: String)
 
