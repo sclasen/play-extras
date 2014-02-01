@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory
 import java.net.URLEncoder
 import concurrent.Future
 import play.api.libs.json._
+import play.api.libs.functional.syntax._
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
 object MailgunService {
@@ -45,6 +46,13 @@ object MailgunService {
   implicit val mer = Json.reads[MessageResponse]
   implicit val md = Json.reads[MailboxDeleted]
   implicit def ok[T](implicit r: Reads[T]) = (__ \ "ok").read[T].map(t => OkResponse(t))
+  implicit val mmm: Reads[MailgunMimeMessage] = (
+    (__ \ "To").read[String] ~
+    (__ \ "sender").read[String] ~
+    (__ \ "from").read[String] ~
+    (__ \ "subject").read[String] ~
+    (__ \ "body-mime").read[String])(MailgunMimeMessage.apply _)
+  implicit val mmd = Json.reads[MaligunMimeDeleted]
 }
 
 class MailgunService(apiKey: String, val mailgunDomain: String) {
@@ -177,6 +185,14 @@ class MailgunService(apiKey: String, val mailgunDomain: String) {
     }
   }
 
+  def getMessage(messageUrl: String): Future[MailgunResponse[MailgunMimeMessage]] = {
+    messagePrepare(messageUrl).get().map(parseResp[MailgunMimeMessage])
+  }
+
+  def deleteMessage(messageUrl: String): Future[MailgunResponse[MaligunMimeDeleted]] = {
+    messagePrepare(messageUrl).get().map(parseResp[MaligunMimeDeleted])
+  }
+
   private def routesParams(route: Route) = Seq("priority" -> route.priority.toString, "description" -> route.description, "expression" -> route.expression) ++
     route.actions.map(a => "action" -> a)
 
@@ -193,6 +209,10 @@ class MailgunService(apiKey: String, val mailgunDomain: String) {
 
   private def prepare(path: String) = {
     WS.url(mailgunBaseUrl + path).withHeaders(AUTHORIZATION -> mailgunBasicAuth, ACCEPT -> "application/json")
+  }
+
+  private def messagePrepare(messageUrl: String) = {
+    WS.url(messageUrl).withHeaders(AUTHORIZATION -> mailgunBasicAuth, ACCEPT -> "message/rfc2822")
   }
 
   private def parseResp[T](resp: Response)(implicit r: Reads[T]): MailgunResponse[T] = {
@@ -263,4 +283,8 @@ case class MailboxList(total_count: Int, items: List[Mailbox]) {
 case class MessageResponse(message: String)
 
 case class MailboxDeleted(message: String, spec: String)
+
+case class MailgunMimeMessage(To: String, sender: String, from: String, subject: String, body_mime: String)
+
+case class MaligunMimeDeleted(message: String)
 

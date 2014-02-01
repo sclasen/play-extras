@@ -1,16 +1,25 @@
 package com.heroku.play.api.libs.ws
 
-import play.api.libs.iteratee.{ Step, Iteratee, Concurrent, Enumerator }
+import play.api.libs.iteratee._
 import com.ning.http.client._
 import com.ning.http.client.AsyncHandler.STATE
 import play.api.mvc._
-import play.api.libs.ws.WS
+import play.api.libs.ws.{ ResponseHeaders, WS }
 import concurrent.{ Future, Promise, future, promise }
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.mvc.ResponseHeader
 import com.ning.http.client.Request
 import play.api.mvc.SimpleResult
 import play.api.http.Status
+import play.api.mvc.SimpleResult
+import play.api.mvc.ResponseHeader
+import play.api.libs.ws.ResponseHeaders
+import scala.Error
+import play.api.libs.iteratee.Input.El
+import play.api.libs.iteratee.Input.El
+import play.api.mvc.SimpleResult
+import play.api.mvc.ResponseHeader
+import play.api.libs.ws.ResponseHeaders
 
 object WSProxy extends Controller {
 
@@ -76,7 +85,20 @@ object WSProxy extends Controller {
 
   }
 
-  def betterProxyRequestAsync(url: String, responseHeadersToOverwrite: Map[String, String] = Map.empty): Future[Result] = {
+  /*def betterProxyRequestAsync(req: Request, responseHeadersToOverwrite: Map[String, String] = Map.empty): Future[Result] = {
+    val url = req.getUrl
+
+    import collection.JavaConverters._
+    val headers = req.getHeaders.keySet().asScala.map {
+      key => key -> req.getHeaders.getFirstValue(key)
+    }.toSeq
+    val method = req.getMethod
+    val wsr = WS.url(url).withHeaders(headers: _*)
+    val exec = method match {
+      case "GET" => wsr.get(_)
+      case "GET" => wsr.post(_)
+    }
+
     val result = Promise[PlainResult]
     WS.url(url).get { responseHeader =>
       val (iteratee, enumerator) = joined[Array[Byte]]
@@ -99,7 +121,7 @@ object WSProxy extends Controller {
         Iteratee.ignore
     }.flatMap(_.run) // <- very important, don't forget this one, otherwise
     result.future
-  }
+  }*/
 
   def joined[A]: (Iteratee[A, Unit], Enumerator[A]) = {
     val promisedIteratee = Promise[Iteratee[A, Unit]]()
