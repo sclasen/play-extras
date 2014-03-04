@@ -94,7 +94,7 @@ class RedisService(val redisUrl: URI) {
       case e: Exception =>
         redisPool.returnBrokenResource(resource.asInstanceOf[BinaryJedis])
         throw e
-      case nsm : NoSuchMethodError =>
+      case nsm: NoSuchMethodError =>
         log.error("No Such Method error caught in RedisService.withRedis, is your redis dependency in sync with play-extras?")
         throw new RuntimeException(nsm)
     }
