@@ -3,14 +3,15 @@ package com.heroku.play.api
 import org.slf4j.LoggerFactory
 import play.api.GlobalSettings
 import play.api.mvc.Results._
-import play.api.mvc.{ Handler, Request, Result, RequestHeader }
+import play.api.mvc._
 import com.heroku.play.api.libs.json._
 import com.heroku.play.api.libs.json.Formats._
+import com.heroku.play.api.libs.json.Error
 
 trait HerokuGlobal extends GlobalSettings {
   val log = LoggerFactory.getLogger("Global")
 
-  override def onError(request: RequestHeader, ex: Throwable) = {
+  override def onError(request: RequestHeader, ex: Throwable): Result = {
     log.error("onError", ex)
     log.error("onError {}  {}", request, request.headers.toSimpleMap)
     InternalServerError(Error("an unexpected error occurred"))
